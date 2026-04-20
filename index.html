@@ -1,112 +1,141 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#09090b" />
-  <meta name="description" content="FinNotes — Controle financeiro com parcelamentos." />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="FinNotes" />
-  <title>FinNotes</title>
-  
-  <link rel="manifest" href="manifest.json" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --z:  #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
-      --z4: #27272a; --z5: #3f3f46; --z6: #52525b;
-      --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a; --t4: #3f3f46;
-      --ac: #3b82f6; --ac2: #60a5fa; --ac3: #1d4ed8; --ac-a: #3b82f614;
-      --ok: #22c55e; --ok2: #16a34a; --ok-a: #22c55e18;
-      --warn: #f59e0b; --warn-a: #f59e0b18;
-      --r: 10px; --r2: 14px; --r3: 18px;
-      --ff: 'Geist', system-ui, sans-serif; --fm: 'Geist Mono', monospace;
-    }
-    html { font-size: 15px; scroll-behavior: smooth; }
-    body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; -webkit-font-smoothing: antialiased; }
-    #root { min-height: 100dvh; }
-    .hidden { display: none !important; }
-    
-    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes fadeIn { from{opacity:0}to{opacity:1} }
-    @keyframes checkPop { 0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)} }
-    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} 80%{transform:translateX(3px)} }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinNotes — Controle Financeiro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="root"></div>
+    <div id="update-banner" class="update-banner hidden">
+        <span>Nova versão disponível!</span>
+        <button id="update-btn">Atualizar agora</button>
+    </div>
 
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <script type="text/babel">
-    const { useState, useEffect, useRef, useCallback, useMemo } = React;
-
-    const STORAGE_KEY = 'finnotes_v4';
-    const RATE = 0.02;
-
-    const CATS = [
-      { id:'Alimentação',    icon:'🍽', color:'#f97316', bg:'#431407' },
-      { id:'Saúde',          icon:'💊', color:'#22d3ee', bg:'#083344' },
-      { id:'Lazer',          icon:'🎮', color:'#a78bfa', bg:'#2e1065' },
-      { id:'Infraestrutura', icon:'🏠', color:'#34d399', bg:'#052e16' },
-      { id:'Outros',          icon:'📦', color:'#94a3b8', bg:'#1e293b' },
-    ];
-
-    const fmt = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-
-    function App() {
-      const [notes, setNotes] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-        catch { return []; }
-      });
-
-      useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-      }, [notes]);
-
-      return (
-        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', animation: 'fadeIn 0.5s ease' }}>
-          <header style={{ marginBottom: '30px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--ac2)' }}>FinNotes</h1>
-            <p style={{ color: 'var(--t3)', fontSize: '14px' }}>Controle Financeiro PWA</p>
-          </header>
-
-          <main>
-            {/* O conteúdo do seu Dashboard e Lista de Notas entra aqui */}
-            <div style={{ background: 'var(--z2)', padding: '20px', borderRadius: 'var(--r2)', border: '1px solid var(--z4)' }}>
-              <p style={{ textAlign: 'center', color: 'var(--t2)' }}>
-                {notes.length === 0 ? "Nenhuma nota encontrada. Comece a adicionar!" : `Você tem ${notes.length} notas.`}
-              </p>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="header-inner">
+                <div class="logo">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-text">Fin<em>Notes</em></span>
+                </div>
+                <div id="note-count" class="header-meta">0 notas</div>
             </div>
-          </main>
+        </header>
 
-          <footer style={{ marginTop: '40px', textAlign: 'center', fontSize: '12px', color: 'var(--t4)' }}>
-            <p>FinNotes · Versão 4.0</p>
-          </footer包
-        </div>
-      );
-    }
+        <main class="main-content">
+            <section class="dashboard">
+                <div class="total-card">
+                    <div class="card-label">Total Acumulado</div>
+                    <div id="total-geral" class="card-value">R$ 0,00</div>
+                    <div id="total-sub" class="card-sub">nenhuma anotação ainda</div>
+                    <div class="card-glow"></div>
+                </div>
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+                <div class="dashboard-stats">
+                    <div class="stat-pill"><span class="stat-dot" style="background:var(--cat-alimentacao)"></span><span class="stat-name">Alimentação</span><span id="val-alimentacao" class="stat-val">R$ 0</span></div>
+                    <div class="stat-pill"><span class="stat-dot" style="background:var(--cat-saude)"></span><span class="stat-name">Saúde</span><span id="val-saude" class="stat-val">R$ 0</span></div>
+                    <div class="stat-pill"><span class="stat-dot" style="background:var(--cat-lazer)"></span><span class="stat-name">Lazer</span><span id="val-lazer" class="stat-val">R$ 0</span></div>
+                    <div class="stat-pill"><span class="stat-dot" style="background:var(--cat-infraestrutura)"></span><span class="stat-name">Infra</span><span id="val-infraestrutura" class="stat-val">R$ 0</span></div>
+                    <div class="stat-pill"><span class="stat-dot" style="background:var(--cat-outros)"></span><span class="stat-name">Outros</span><span id="val-outros" class="stat-val">R$ 0</span></div>
+                </div>
+            </section>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
-          .then(reg => console.log('PWA: Service Worker Ativo'))
-          .catch(err => console.error('PWA: Erro no SW', err));
-      });
-    }
-  </script>
+            <section class="form-section">
+                <div class="section-header">
+                    <h2>Nova Anotação</h2>
+                    <div class="section-line"></div>
+                </div>
+                <div class="form-card">
+                    <div class="form-grid">
+                        <div class="field-group col-span-2">
+                            <label>Nome do Gasto</label>
+                            <input type="text" id="nome" placeholder="Ex: Upgrade de Servidor">
+                        </div>
+                        <div class="field-group">
+                            <label>Data</label>
+                            <input type="date" id="data">
+                        </div>
+                        <div class="field-group">
+                            <label>Categoria</label>
+                            <select id="categoria">
+                                <option value="Alimentação">Alimentação</option>
+                                <option value="Saúde">Saúde</option>
+                                <option value="Lazer">Lazer</option>
+                                <option value="Infraestrutura">Infraestrutura</option>
+                                <option value="Outros" selected>Outros</option>
+                            </select>
+                        </div>
+                        <div class="field-group col-span-2">
+                            <label>Descrição</label>
+                            <textarea id="descricao" placeholder="Detalhes opcionais..."></textarea>
+                        </div>
+                        <div class="field-group">
+                            <label>Parcelas</label>
+                            <select id="parcelas">
+                                <option value="1">À vista (1x)</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x</option>
+                                <option value="5">5x</option>
+                                <option value="6">6x</option>
+                                <option value="7">7x</option>
+                                <option value="8">8x</option>
+                                <option value="9">9x</option>
+                                <option value="10">10x</option>
+                                <option value="11">11x</option>
+                                <option value="12">12x</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label>Valor Real (Sem Juros)</label>
+                            <input type="number" id="valor-real" step="0.01" placeholder="0,00">
+                        </div>
+                        <div class="field-group col-span-2">
+                            <label>Valor Total com Juros <span id="juros-badge" class="juros-badge" style="display:none"></span></label>
+                            <input type="number" id="valor-juros" step="0.01" placeholder="0,00">
+                            <div id="parcela-hint" class="field-hint"></div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button id="btn-clear" class="btn-clear">Limpar</button>
+                        <button id="btn-save" class="btn-save">
+                            <span class="btn-icon">+</span> Salvar Nota
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="list-section">
+                <div class="section-header">
+                    <h2>Histórico</h2>
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="todas">Todas</button>
+                        <button class="filter-tab" data-filter="Alimentação">Alimentação</button>
+                        <button class="filter-tab" data-filter="Infraestrutura">Infra</button>
+                    </div>
+                </div>
+                
+                <div id="notes-list" class="notes-list">
+                    <div id="empty-state" class="empty-state">
+                        <div class="empty-icon">📂</div>
+                        <p>Nenhuma nota encontrada</p>
+                        <span>Comece adicionando um gasto acima</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            FinNotes v2.0 — Sistema de Uso Pessoal
+        </footer>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="script.js"></script>
 </body>
 </html>
