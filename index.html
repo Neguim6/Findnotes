@@ -3,208 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FinNotes Ultra</title>
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-
+    <title>FinNotes — Ultra Modern</title>
     <style>
         :root {
             --bg: #09090b;
+            --surface: #121214;
             --card: #18181b;
             --accent: #3b82f6;
-            --text: #f4f4f5;
+            --text: #ffffff;
             --text-dim: #a1a1aa;
-            --radius: 18px;
+            --radius: 20px;
+            --glass: rgba(24, 24, 27, 0.7);
         }
 
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body {
-            background-color: var(--bg);
+            background: var(--bg);
             color: var(--text);
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 0;
             display: flex;
             justify-content: center;
             min-height: 100vh;
+            background-image: radial-gradient(circle at top right, #1d4ed810, transparent);
         }
 
-        #root {
-            width: 100%;
-            max-width: 450px;
-            padding: 20px;
-            box-sizing: border-box;
+        #app { width: 100%; max-width: 480px; padding: 24px; position: relative; }
+
+        /* Header */
+        .header { margin-bottom: 32px; }
+        .header h1 { font-size: 28px; font-weight: 800; margin: 0; letter-spacing: -1px; }
+        .header span { color: var(--accent); }
+
+        /* Dashboard */
+        .dashboard {
+            background: var(--glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 24px;
+            border-radius: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
 
-        /* Glassmorphism Effect */
-        .glass {
-            background: rgba(24, 24, 27, 0.8);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .stats-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; }
+        .stats-value { font-size: 36px; font-weight: 800; margin: 8px 0; }
+
+        /* Note Card */
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 18px;
             border-radius: var(--radius);
+            margin-bottom: 16px;
+            animation: fadeIn 0.5s ease forwards;
         }
 
-        .btn-add {
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .card-title { font-weight: 600; font-size: 16px; }
+        .card-price { color: var(--accent); font-weight: 700; }
+
+        .progress-container { height: 6px; background: #27272a; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+        /* FAB - Floating Button */
+        .fab {
             position: fixed;
             bottom: 30px;
             right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 20px;
+            width: 64px;
+            height: 64px;
             background: var(--accent);
-            color: white;
-            border: none;
-            font-size: 30px;
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
-            cursor: pointer;
-            z-index: 100;
-        }
-
-        .card-finance {
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: transform 0.2s ease;
-        }
-
-        .card-finance:active { transform: scale(0.98); }
-
-        .progress-bar {
-            height: 6px;
-            background: #27272a;
-            border-radius: 10px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            background: #27272a;
-            border: 1px solid #3f3f46;
-            color: white;
-            border-radius: 10px;
-            font-size: 16px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.85);
+            border-radius: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 32px;
+            transition: transform 0.2s;
+            z-index: 99;
+        }
+        .fab:active { transform: scale(0.9); }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            z-index: 200;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--surface);
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 28px;
+            border: 1px solid var(--card);
+        }
+
+        input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid #27272a;
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .btn-confirm {
+            background: var(--accent);
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div style="padding: 50px; text-align: center; color: #555;">Carregando interface surreal...</div>
+
+    <div id="app">
+        <header class="header">
+            <h1>Fin<span>Notes</span></h1>
+            <p style="color: var(--text-dim); margin-top: 4px;">Controle de Investimentos</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="stats-label">Total Comprometido</div>
+            <div class="stats-value" id="total-val">R$ 0,00</div>
+            <div style="font-size: 13px; color: var(--text-dim);">Dica: Toque no card para pagar uma parcela.</div>
+        </div>
+
+        <div id="notes-list">
+            </div>
+
+        <button class="fab" onclick="toggleModal(true)">+</button>
     </div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0">Novo Registro</h2>
+            <input type="text" id="in-nome" placeholder="Descrição (ex: iPhone 15)">
+            <input type="number" id="in-valor" placeholder="Valor Total (R$)">
+            <input type="number" id="in-parcelas" placeholder="Número de Parcelas">
+            <button class="btn-confirm" onclick="saveNote()">Adicionar Despesa</button>
+            <button onclick="toggleModal(false)" style="background:none; border:none; color:var(--text-dim); width:100%; margin-top:15px; cursor:pointer;">Cancelar</button>
+        </div>
+    </div>
 
-        function App() {
-            const [notes, setNotes] = useState(() => {
-                const saved = localStorage.getItem('finnotes_data');
-                return saved ? JSON.parse(saved) : [];
-            });
-            const [showModal, setShowModal] = useState(false);
+    <script>
+        let notes = JSON.parse(localStorage.getItem('finnotes_v5') || '[]');
 
-            useEffect(() => {
-                localStorage.setItem('finnotes_data', JSON.stringify(notes));
-            }, [notes]);
-
-            const addNote = (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const newNote = {
-                    id: Date.now(),
-                    nome: formData.get('nome'),
-                    valor: parseFloat(formData.get('valor')),
-                    parcelas: parseInt(formData.get('parcelas')),
-                    pagas: 0
-                };
-                setNotes([newNote, ...notes]);
-                setShowModal(false);
-            };
-
-            const toggleParcela = (noteId) => {
-                setNotes(notes.map(n => {
-                    if(n.id === noteId) {
-                        return { ...n, pagas: n.pagas < n.parcelas ? n.pagas + 1 : 0 };
-                    }
-                    return n;
-                }));
-            };
-
-            const totalComprometido = notes.reduce((acc, curr) => acc + curr.valor, 0);
-
-            return (
-                <div>
-                    <header style={{ marginBottom: 30 }}>
-                        <h1 style={{ fontSize: '28px', fontWeight: '800', margin: 0 }}>Fin<span style={{ color: 'var(--accent)' }}>Notes</span></h1>
-                        <p style={{ color: 'var(--text-dim)', fontSize: '14px' }}>Gestão de Fluxo Pessoal</p>
-                    </header>
-
-                    <div className="glass" style={{ padding: '25px', marginBottom: '30px', textAlign: 'center' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Total em Aberto</span>
-                        <div style={{ fontSize: '32px', fontWeight: '800', marginTop: '5px' }}>
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalComprometido)}
-                        </div>
-                    </div>
-
-                    <h3 style={{ fontSize: '14px', color: 'var(--text-dim)', marginBottom: '15px' }}>SUAS NOTAS</h3>
-
-                    {notes.map(note => (
-                        <div key={note.id} className="glass card-finance" onClick={() => toggleParcela(note.id)}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                <span style={{ fontWeight: '600' }}>{note.nome}</span>
-                                <span style={{ color: 'var(--accent)', fontWeight: '700' }}>R$ {note.valor.toFixed(2)}</span>
-                            </div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                                Parcela {note.pagas} de {note.parcelas}
-                            </div>
-                            <div className="progress-bar">
-                                <div className="progress-fill" style={{ width: `${(note.pagas / note.parcelas) * 100}%` }}></div>
-                            </div>
-                        </div>
-                    ))}
-
-                    <button className="btn-add" onClick={() => setShowModal(true)}>+</button>
-
-                    {showModal && (
-                        <div className="modal-overlay">
-                            <form className="glass" onSubmit={addNote} style={{ padding: '30px', width: '100%' }}>
-                                <h2 style={{ marginTop: 0 }}>Nova Despesa</h2>
-                                <input name="nome" placeholder="Ex: Notebook Novo" required />
-                                <input name="valor" type="number" step="0.01" placeholder="Valor Total (R$)" required />
-                                <input name="parcelas" type="number" placeholder="Nº de Parcelas" required />
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                    <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #3f3f46', color: 'white', borderRadius: '10px' }}>Cancelar</button>
-                                    <button type="submit" style={{ flex: 1, padding: '12px', background: 'var(--accent)', border: 'none', color: 'white', borderRadius: '10px', fontWeight: 'bold' }}>Salvar</button>
-                                </div>
-                            </form>
-                        </div>
-                    )}
-                </div>
-            );
+        function toggleModal(show) {
+            document.getElementById('modal').classList.toggle('active', show);
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function saveNote() {
+            const nome = document.getElementById('in-nome').value;
+            const valor = parseFloat(document.getElementById('in-valor').value);
+            const parcelas = parseInt(document.getElementById('in-parcelas').value);
+
+            if (!nome || !valor) return alert('Preencha os campos!');
+
+            const newNote = {
+                id: Date.now(),
+                nome,
+                valor,
+                parcelas,
+                pagas: 0
+            };
+
+            notes.unshift(newNote);
+            localStorage.setItem('finnotes_v5', JSON.stringify(notes));
+            render();
+            toggleModal(false);
+            
+            // Limpar campos
+            document.getElementById('in-nome').value = '';
+            document.getElementById('in-valor').value = '';
+            document.getElementById('in-parcelas').value = '';
+        }
+
+        function toggleParcela(id) {
+            notes = notes.map(n => {
+                if (n.id === id) {
+                    n.pagas = n.pagas < n.parcelas ? n.pagas + 1 : 0;
+                }
+                return n;
+            });
+            localStorage.setItem('finnotes_v5', JSON.stringify(notes));
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('notes-list');
+            const totalDisplay = document.getElementById('total-val');
+            list.innerHTML = '';
+            
+            let totalGeral = 0;
+
+            notes.forEach(n => {
+                totalGeral += n.valor;
+                const progresso = (n.pagas / n.parcelas) * 100;
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => toggleParcela(n.id);
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="card-title">${n.nome}</span>
+                        <span class="card-price">R$ ${n.valor.toFixed(2)}</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-dim)">
+                        Parcelas: ${n.pagas} de ${n.parcelas}
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: ${progresso}%"></div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            totalDisplay.innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral);
+        }
+
+        // Inicializar
+        render();
     </script>
 </body>
 </html>
