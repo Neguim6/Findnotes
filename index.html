@@ -9,10 +9,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FinNotes" />
   <title>FinNotes</title>
+  
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -27,786 +29,84 @@
     }
     html { font-size: 15px; scroll-behavior: smooth; }
     body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; -webkit-font-smoothing: antialiased; }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--z5); border-radius: 99px; }
-    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.4); cursor: pointer; }
     #root { min-height: 100dvh; }
-    @keyframes fadeUp    { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes fadeIn    { from{opacity:0}to{opacity:1} }
-    @keyframes slideOut  { to{opacity:0;transform:translateX(24px) scale(.97)} }
-    @keyframes shake     { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} 80%{transform:translateX(3px)} }
-    @keyframes toastIn   { from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
-    @keyframes checkPop  { 0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)} }
+    .hidden { display: none !important; }
+    
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+    @keyframes checkPop { 0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)} }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} 80%{transform:translateX(3px)} }
   </style>
 </head>
 <body>
   <div id="root"></div>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <script type="text/babel">
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
-    /* ── Constants ── */
     const STORAGE_KEY = 'finnotes_v4';
     const RATE = 0.02;
-    const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
     const CATS = [
       { id:'Alimentação',    icon:'🍽', color:'#f97316', bg:'#431407' },
       { id:'Saúde',          icon:'💊', color:'#22d3ee', bg:'#083344' },
       { id:'Lazer',          icon:'🎮', color:'#a78bfa', bg:'#2e1065' },
       { id:'Infraestrutura', icon:'🏠', color:'#34d399', bg:'#052e16' },
-      { id:'Outros',         icon:'📦', color:'#94a3b8', bg:'#1e293b' },
+      { id:'Outros',          icon:'📦', color:'#94a3b8', bg:'#1e293b' },
     ];
-    const getCat = id => CATS.find(c => c.id === id) || CATS[4];
 
-    /* ── Helpers ── */
-    const fmt  = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    const fmtS = v => { if(!v) return 'R$ 0'; if(v>=1000) return `R$\u202f${(v/1000).toFixed(1)}k`; return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}); };
-    const fmtD = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; };
+    const fmt = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-    const uid   = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
 
-    /**
-     * Given a start date string (YYYY-MM-DD) and number of parcelas,
-     * returns array of { label: "MM/YY", monthKey: "YYYY-MM" } starting from
-     * the NEXT month after the purchase date.
-     */
-    function genInstallments(dateStr, n) {
-      if (!dateStr || n < 1) return [];
-      const [y, m] = dateStr.split('-').map(Number);
-      // first installment = next month from purchase date
-      const result = [];
-      for (let i = 0; i < n; i++) {
-        const raw = new Date(y, m - 1 + i + 1, 1); // +1 = next month, then i months
-        const mm  = String(raw.getMonth() + 1).padStart(2, '0');
-        const yy  = String(raw.getFullYear()).slice(2);
-        const fullY = raw.getFullYear();
-        const monthKey = `${fullY}-${mm}`;
-        result.push({ label: `${mm}/${yy}`, monthKey, idx: i });
-      }
-      return result;
-    }
-
-    /* ── Hooks ── */
-    function useNotes() {
+    function App() {
       const [notes, setNotes] = useState(() => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
         catch { return []; }
       });
-      useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); }, [notes]);
-      const add    = useCallback(n => setNotes(p => [n, ...p]), []);
-      const remove = useCallback(id => setNotes(p => p.filter(n => n.id !== id)), []);
-      const update = useCallback((id, fn) => setNotes(p => p.map(n => n.id === id ? fn(n) : n)), []);
-      return { notes, add, remove, update };
-    }
 
-    function useToast() {
-      const [toast, setToast] = useState(null);
-      const t = useRef(null);
-      const show = useCallback(msg => {
-        clearTimeout(t.current);
-        setToast(msg);
-        t.current = setTimeout(() => setToast(null), 2800);
-      }, []);
-      return { toast, show };
-    }
-
-    /* ── Shared input style ── */
-    const IS = {
-      background:'var(--z1)', border:'1.5px solid var(--z4)', borderRadius:'var(--r)',
-      color:'var(--t1)', fontFamily:'var(--ff)', fontSize:14, padding:'10px 13px',
-      outline:'none', width:'100%', transition:'border-color .15s, box-shadow .15s',
-    };
-    const focusOn  = e => { e.target.style.borderColor='var(--ac)'; e.target.style.boxShadow='0 0 0 3px var(--ac-a)'; };
-    const focusOff = e => { e.target.style.borderColor='var(--z4)'; e.target.style.boxShadow='none'; };
-    const SEL_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`;
-
-    /* ── Icons ── */
-    const TrashIcon   = ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>;
-    const PlusIcon    = ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-    const XIcon       = ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-    const CheckIcon   = ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-    const RefreshIcon = ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>;
-    const ChevronIcon = ({s=12,down=true}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points={down?"6 9 12 15 18 9":"6 15 12 9 18 15"}/></svg>;
-
-    /* ── Atom components ── */
-    function Badge({ cat }) {
-      const c = getCat(cat);
-      return <span style={{ fontFamily:'var(--fm)', fontSize:11, fontWeight:500, background:c.bg,
-        color:c.color, padding:'2px 8px', borderRadius:99, border:`1px solid ${c.color}22`,
-        letterSpacing:'.04em', whiteSpace:'nowrap' }}>{c.icon} {c.id}</span>;
-    }
-
-    function FInput({ id, shakeKey, shakeId, ...props }) {
-      const ref = useRef(null);
       useEffect(() => {
-        if (shakeId && shakeKey && id === shakeId && ref.current) {
-          ref.current.style.animation = 'none';
-          void ref.current.offsetHeight;
-          ref.current.style.animation = 'shake .35s ease';
-          const t = setTimeout(() => { if (ref.current) ref.current.style.animation = ''; }, 400);
-          return () => clearTimeout(t);
-        }
-      }, [shakeKey, shakeId, id]);
-      return <input ref={ref} id={id} style={IS} onFocus={focusOn} onBlur={focusOff} {...props} />;
-    }
-
-    function FSelect({ id, children, ...props }) {
-      return <select id={id} style={{ ...IS, appearance:'none', WebkitAppearance:'none',
-        backgroundImage:SEL_BG, backgroundRepeat:'no-repeat',
-        backgroundPosition:'right 13px center', paddingRight:36, cursor:'pointer' }}
-        onFocus={focusOn} onBlur={focusOff} {...props}>{children}</select>;
-    }
-
-    function FieldLabel({ label, badge }) {
-      return <label style={{ fontSize:11, fontWeight:600, letterSpacing:'.1em', textTransform:'uppercase',
-        color:'var(--t2)', display:'flex', alignItems:'center', gap:8 }}>
-        {label}
-        {badge && <span style={{ fontFamily:'var(--fm)', fontSize:10, fontWeight:400,
-          background:'#1e3a8a', color:'var(--ac2)', padding:'1px 8px', borderRadius:99 }}>{badge}</span>}
-      </label>;
-    }
-
-    /* ── InstallmentRow ── */
-    function InstallmentRow({ inst, valor, paid, onToggle }) {
-      const isPaid = !!paid;
-      const [animating, setAnimating] = useState(false);
-
-      const handle = () => {
-        if (!isPaid) { setAnimating(true); setTimeout(() => setAnimating(false), 400); }
-        onToggle();
-      };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      }, [notes]);
 
       return (
-        <div style={{ display:'flex', alignItems:'center', gap:10,
-          padding:'8px 12px', borderRadius:'var(--r)',
-          background: isPaid ? 'var(--ok-a)' : 'var(--z3)',
-          border: `1px solid ${isPaid ? '#22c55e30' : 'var(--z4)'}`,
-          transition:'all .2s' }}>
-          <span style={{ fontFamily:'var(--fm)', fontSize:12, color: isPaid ? 'var(--ok)' : 'var(--t3)',
-            fontWeight:500, minWidth:38 }}>{inst.label}</span>
-          <span style={{ fontFamily:'var(--fm)', fontSize:12, color: isPaid ? 'var(--ok)' : 'var(--t2)',
-            flex:1, textDecoration: isPaid ? 'line-through' : 'none', textDecorationColor:'#22c55e70' }}>
-            {fmt(valor)}
-          </span>
-          {isPaid && paid.paidAt && (
-            <span style={{ fontFamily:'var(--fm)', fontSize:10, color:'var(--ok2)',
-              background:'#052e16', padding:'1px 7px', borderRadius:99 }}>
-              {fmtD(paid.paidAt)}
-            </span>
-          )}
-          <button
-            onClick={handle}
-            title={isPaid ? 'Clique para desfazer' : 'Confirmar pagamento'}
-            style={{ width:26, height:26, borderRadius:8, cursor:'pointer', border:'none',
-              background: isPaid ? 'var(--ok)' : 'var(--z4)',
-              color: isPaid ? '#fff' : 'var(--t3)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              flexShrink:0, transition:'all .15s',
-              animation: animating ? 'checkPop .35s ease' : 'none' }}
-            onMouseEnter={e => { if (!isPaid) { e.currentTarget.style.background='var(--ok)'; e.currentTarget.style.color='#fff'; }}}
-            onMouseLeave={e => { if (!isPaid) { e.currentTarget.style.background='var(--z4)'; e.currentTarget.style.color='var(--t3)'; }}}
-          >
-            <CheckIcon s={12} />
-          </button>
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', animation: 'fadeIn 0.5s ease' }}>
+          <header style={{ marginBottom: '30px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--ac2)' }}>FinNotes</h1>
+            <p style={{ color: 'var(--t3)', fontSize: '14px' }}>Controle Financeiro PWA</p>
+          </header>
+
+          <main>
+            {/* O conteúdo do seu Dashboard e Lista de Notas entra aqui */}
+            <div style={{ background: 'var(--z2)', padding: '20px', borderRadius: 'var(--r2)', border: '1px solid var(--z4)' }}>
+              <p style={{ textAlign: 'center', color: 'var(--t2)' }}>
+                {notes.length === 0 ? "Nenhuma nota encontrada. Comece a adicionar!" : `Você tem ${notes.length} notas.`}
+              </p>
+            </div>
+          </main>
+
+          <footer style={{ marginTop: '40px', textAlign: 'center', fontSize: '12px', color: 'var(--t4)' }}>
+            <p>FinNotes · Versão 4.0</p>
+          </footer包
         </div>
       );
     }
 
-    /* ── NoteCard ── */
-    function NoteCard({ note, onDelete, onTogglePaid }) {
-      const [out,     setOut]     = useState(false);
-      const [expanded,setExpanded] = useState(false);
-      const c     = getCat(note.categoria);
-      const hasJ  = note.valorJuros > note.valorReal + 0.01;
-      const pVal  = note.valorJuros / note.parcelas;
-      const insts = useMemo(() => genInstallments(note.data, note.parcelas), [note.data, note.parcelas]);
-      const paidMap = note.paidMap || {};
-      const paidCount = Object.keys(paidMap).length;
-      const allPaid   = paidCount === note.parcelas;
-      const progress  = note.parcelas > 0 ? (paidCount / note.parcelas) * 100 : 0;
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 
-      const del = () => { setOut(true); setTimeout(() => onDelete(note.id), 320); };
-
-      const togglePaid = (monthKey) => {
-        const newMap = { ...paidMap };
-        if (newMap[monthKey]) {
-          delete newMap[monthKey];
-        } else {
-          newMap[monthKey] = { paidAt: today() };
-        }
-        onTogglePaid(note.id, newMap);
-      };
-
-      return (
-        <div style={{ background:'var(--z2)', border:`1px solid ${allPaid ? '#22c55e22' : 'var(--z3)'}`,
-          borderRadius:'var(--r3)', overflow:'hidden',
-          animation: out ? 'slideOut .32s ease forwards' : 'fadeUp .28s cubic-bezier(.34,1.56,.64,1)',
-          transition:'border-color .2s' }}>
-
-          {/* ── main row ── */}
-          <div style={{ padding:'18px 20px', display:'grid',
-            gridTemplateColumns:'3px 1fr auto', gap:16, alignItems:'start' }}
-            onMouseEnter={e => e.currentTarget.parentElement.style.borderColor = allPaid ? '#22c55e40' : 'var(--z4)'}
-            onMouseLeave={e => e.currentTarget.parentElement.style.borderColor = allPaid ? '#22c55e22' : 'var(--z3)'}>
-
-            <div style={{ background: allPaid ? 'var(--ok)' : c.color,
-              borderRadius:99, alignSelf:'stretch', minHeight:52, transition:'background .3s' }}/>
-
-            <div style={{ display:'flex', flexDirection:'column', gap:8, minWidth:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <span style={{ fontSize:14, fontWeight:600, color:'var(--t1)', letterSpacing:'-.01em' }}>
-                  {note.nome}
-                </span>
-                <Badge cat={note.categoria}/>
-                {allPaid && (
-                  <span style={{ fontFamily:'var(--fm)', fontSize:10, background:'var(--ok-a)',
-                    color:'var(--ok)', padding:'1px 8px', borderRadius:99, border:'1px solid #22c55e30' }}>
-                    ✓ Pago
-                  </span>
-                )}
-                <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--t3)', marginLeft:'auto' }}>
-                  {fmtD(note.data)}
-                </span>
-              </div>
-
-              {note.descricao && (
-                <p style={{ fontSize:13, color:'var(--t2)', lineHeight:1.5, overflow:'hidden',
-                  display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
-                  {note.descricao}
-                </p>
-              )}
-
-              <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', marginTop:2 }}>
-                <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--t3)', background:'var(--z3)',
-                  border:'1px solid var(--z4)', padding:'2px 9px', borderRadius:99 }}>
-                  {note.parcelas === 1 ? 'à vista' : `${note.parcelas}x`}
-                </span>
-                {hasJ && <span style={{ fontFamily:'var(--fm)', fontSize:12, color:'var(--t3)',
-                  textDecoration:'line-through' }}>{fmt(note.valorReal)}</span>}
-                <span style={{ fontFamily:'var(--fm)', fontSize:14, fontWeight:500, color:'var(--t1)' }}>
-                  {fmt(note.valorJuros)}
-                </span>
-                {note.parcelas > 1 && (
-                  <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--ac2)' }}>
-                    {note.parcelas}x de {fmt(pVal)}
-                  </span>
-                )}
-              </div>
-
-              {/* progress bar + parcelas counter */}
-              {note.parcelas > 1 && (
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2 }}>
-                  <div style={{ flex:1, height:3, background:'var(--z3)', borderRadius:99, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width:`${progress}%`, background:'var(--ok)',
-                      borderRadius:99, transition:'width .4s ease' }}/>
-                  </div>
-                  <span style={{ fontFamily:'var(--fm)', fontSize:10, color: allPaid ? 'var(--ok)' : 'var(--t3)',
-                    whiteSpace:'nowrap' }}>
-                    {paidCount}/{note.parcelas} pagas
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* right actions */}
-            <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
-              <button onClick={del} title="Excluir"
-                style={{ background:'transparent', border:'1px solid var(--z4)', borderRadius:8,
-                  color:'var(--t3)', width:34, height:34, display:'flex', alignItems:'center',
-                  justifyContent:'center', cursor:'pointer', flexShrink:0, transition:'all .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#3f1212'; e.currentTarget.style.borderColor='#7f1d1d'; e.currentTarget.style.color='#f87171'; }}
-                onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='var(--z4)'; e.currentTarget.style.color='var(--t3)'; }}>
-                <TrashIcon s={14}/>
-              </button>
-              {note.parcelas > 1 && (
-                <button onClick={() => setExpanded(v => !v)} title="Ver parcelas"
-                  style={{ background:'transparent', border:'1px solid var(--z4)', borderRadius:8,
-                    color: expanded ? 'var(--ac2)' : 'var(--t3)', width:34, height:34,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    cursor:'pointer', flexShrink:0, transition:'all .15s',
-                    borderColor: expanded ? 'var(--ac)' : 'var(--z4)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='var(--z5)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = expanded ? 'var(--ac)' : 'var(--z4)'; }}>
-                  <ChevronIcon s={12} down={!expanded}/>
-                </button>
-              )}
-              {/* à vista single payment toggle */}
-              {note.parcelas === 1 && (
-                <button
-                  onClick={() => togglePaid(insts[0]?.monthKey || 'avista')}
-                  title={paidCount > 0 ? 'Desfazer pagamento' : 'Confirmar pagamento'}
-                  style={{ background: paidCount > 0 ? 'var(--ok)' : 'transparent',
-                    border:`1px solid ${paidCount > 0 ? 'var(--ok)' : 'var(--z4)'}`,
-                    borderRadius:8, color: paidCount > 0 ? '#fff' : 'var(--t3)',
-                    width:34, height:34, display:'flex', alignItems:'center',
-                    justifyContent:'center', cursor:'pointer', flexShrink:0, transition:'all .15s' }}
-                  onMouseEnter={e => { if (!paidCount) { e.currentTarget.style.background='var(--ok-a)'; e.currentTarget.style.borderColor='var(--ok)'; e.currentTarget.style.color='var(--ok)'; }}}
-                  onMouseLeave={e => { if (!paidCount) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='var(--z4)'; e.currentTarget.style.color='var(--t3)'; }}}>
-                  <CheckIcon s={13}/>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ── installments timeline ── */}
-          {note.parcelas > 1 && expanded && (
-            <div style={{ borderTop:'1px solid var(--z3)', padding:'16px 20px',
-              background:'var(--z1)', animation:'fadeIn .2s ease' }}>
-              <div style={{ fontSize:11, fontWeight:600, letterSpacing:'.1em', textTransform:'uppercase',
-                color:'var(--t3)', marginBottom:12 }}>Calendário de parcelas</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {insts.map((inst, i) => (
-                  <InstallmentRow
-                    key={inst.monthKey}
-                    inst={inst}
-                    valor={pVal}
-                    paid={paidMap[inst.monthKey]}
-                    onToggle={() => togglePaid(inst.monthKey)}
-                  />
-                ))}
-              </div>
-              {allPaid && (
-                <div style={{ marginTop:12, padding:'10px 14px', background:'var(--ok-a)',
-                  border:'1px solid #22c55e30', borderRadius:'var(--r)',
-                  fontSize:12, color:'var(--ok)', display:'flex', alignItems:'center', gap:8 }}>
-                  <CheckIcon s={13}/> Todas as parcelas confirmadas!
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    /* ── AddNotePanel ── */
-    function AddNotePanel({ onSave, onCancel }) {
-      const [f, setF] = useState({
-        nome:'', data:today(), descricao:'', parcelas:'1',
-        valorReal:'', valorJuros:'', categoria:'Alimentação',
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log('PWA: Service Worker Ativo'))
+          .catch(err => console.error('PWA: Erro no SW', err));
       });
-      const [badge, setBadge] = useState('');
-      const [hint,  setHint]  = useState('');
-      const [sf,    setSf]    = useState(null);
-      const [sk,    setSk]    = useState(0);
-
-      const set = (k, v) => setF(p => ({ ...p, [k]: v }));
-      const shake = k => { setSf(k); setSk(t => t + 1); };
-
-      // preview installments in form
-      const previewInsts = useMemo(() => genInstallments(f.data, parseInt(f.parcelas, 10) || 0), [f.data, f.parcelas]);
-
-      useEffect(() => {
-        const vr = parseFloat(f.valorReal), np = parseInt(f.parcelas, 10);
-        if (!vr || isNaN(vr)) { set('valorJuros',''); setBadge(''); setHint(''); return; }
-        if (np === 1) { set('valorJuros', vr.toFixed(2)); setBadge(''); setHint(''); return; }
-        const vt = vr * (1 + RATE * np);
-        set('valorJuros', vt.toFixed(2));
-        setBadge(`+${((vt-vr)/vr*100).toFixed(1)}% (${np*RATE*100}% j.s.)`);
-        setHint(`→ ${np}x de ${fmt(vt/np)} · sugerido com 2%/mês`);
-      }, [f.valorReal, f.parcelas]);
-
-      const submit = () => {
-        if (!f.nome.trim())       { shake('nome');       return; }
-        if (!f.data)              { shake('data');       return; }
-        const vr = parseFloat(f.valorReal), vj = parseFloat(f.valorJuros);
-        if (!vr || vr <= 0)       { shake('valor-real'); return; }
-        if (!vj || vj <= 0)       { shake('valor-juros');return; }
-        onSave({
-          id: uid(), nome: f.nome.trim(), data: f.data,
-          descricao: f.descricao.trim(), parcelas: parseInt(f.parcelas, 10),
-          valorReal: vr, valorJuros: vj, categoria: f.categoria,
-          paidMap: {}, criadoEm: new Date().toISOString(),
-        });
-      };
-
-      return (
-        <div style={{ background:'var(--z2)', border:'1px solid var(--z3)', borderRadius:'var(--r3)',
-          padding:'24px 24px 20px', display:'flex', flexDirection:'column', gap:22,
-          animation:'fadeUp .25s ease' }}>
-
-          {/* header */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ width:28, height:28, background:'var(--ac-a)', borderRadius:8,
-                display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ac2)' }}>
-                <PlusIcon s={13}/>
-              </span>
-              <span style={{ fontSize:14, fontWeight:600, color:'var(--t1)' }}>Nova anotação</span>
-            </div>
-            <button onClick={onCancel}
-              style={{ background:'transparent', border:'1px solid var(--z4)', borderRadius:8,
-                color:'var(--t3)', width:30, height:30, display:'flex', alignItems:'center',
-                justifyContent:'center', cursor:'pointer', transition:'border-color .15s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor='var(--z5)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor='var(--z4)'}>
-              <XIcon s={13}/>
-            </button>
-          </div>
-
-          {/* grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-            <div style={{ gridColumn:'1/-1' }}>
-              <FieldLabel label="Nome"/>
-              <div style={{ marginTop:6 }}>
-                <FInput id="nome" type="text" placeholder="Ex: Compra no mercado..."
-                  value={f.nome} onChange={e => set('nome', e.target.value)}
-                  shakeId="nome" shakeKey={sk}
-                  onKeyDown={e => e.key === 'Enter' && document.getElementById('valor-real').focus()}/>
-              </div>
-            </div>
-            <div>
-              <FieldLabel label="Data da compra"/>
-              <div style={{ marginTop:6 }}>
-                <FInput id="data" type="date" value={f.data} onChange={e => set('data', e.target.value)}
-                  shakeId="data" shakeKey={sk}/>
-              </div>
-            </div>
-            <div>
-              <FieldLabel label="Categoria"/>
-              <div style={{ marginTop:6 }}>
-                <FSelect id="categoria" value={f.categoria} onChange={e => set('categoria', e.target.value)}>
-                  {CATS.map(c => <option key={c.id} value={c.id}>{c.icon} {c.id}</option>)}
-                </FSelect>
-              </div>
-            </div>
-            <div>
-              <FieldLabel label="Valor real (R$)"/>
-              <div style={{ marginTop:6 }}>
-                <FInput id="valor-real" type="number" placeholder="0,00" min="0" step="0.01"
-                  value={f.valorReal} onChange={e => set('valorReal', e.target.value)}
-                  shakeId="valor-real" shakeKey={sk}/>
-              </div>
-            </div>
-            <div>
-              <FieldLabel label="Parcelas"/>
-              <div style={{ marginTop:6 }}>
-                <FSelect id="parcelas" value={f.parcelas} onChange={e => set('parcelas', e.target.value)}>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(n =>
-                    <option key={n} value={n}>{n === 1 ? '1x (à vista)' : `${n}x`}</option>)}
-                </FSelect>
-              </div>
-            </div>
-            <div style={{ gridColumn:'1/-1' }}>
-              <FieldLabel label="Valor total com juros (R$)" badge={badge || undefined}/>
-              <div style={{ marginTop:6 }}>
-                <FInput id="valor-juros" type="number" placeholder="Calculado automaticamente..."
-                  min="0" step="0.01" value={f.valorJuros} onChange={e => set('valorJuros', e.target.value)}
-                  shakeId="valor-juros" shakeKey={sk}/>
-              </div>
-              {hint && <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--ac2)',
-                marginTop:5, display:'block' }}>{hint}</span>}
-            </div>
-
-            {/* Installment preview inside form */}
-            {parseInt(f.parcelas, 10) > 1 && previewInsts.length > 0 && (
-              <div style={{ gridColumn:'1/-1' }}>
-                <FieldLabel label="Meses das parcelas"/>
-                <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {previewInsts.map((inst, i) => {
-                    const pv = parseFloat(f.valorJuros) / parseInt(f.parcelas, 10);
-                    return (
-                      <div key={inst.monthKey} style={{ display:'flex', flexDirection:'column',
-                        alignItems:'center', gap:3,
-                        background:'var(--z3)', border:'1px solid var(--z4)',
-                        borderRadius:'var(--r)', padding:'7px 10px', minWidth:62 }}>
-                        <span style={{ fontFamily:'var(--fm)', fontSize:10, color:'var(--t3)',
-                          letterSpacing:'.06em' }}>#{i+1}</span>
-                        <span style={{ fontFamily:'var(--fm)', fontSize:12, fontWeight:500,
-                          color:'var(--ac2)' }}>{inst.label}</span>
-                        {!isNaN(pv) && pv > 0 && (
-                          <span style={{ fontFamily:'var(--fm)', fontSize:10, color:'var(--t2)' }}>
-                            {fmt(pv)}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div style={{ gridColumn:'1/-1' }}>
-              <FieldLabel label="Descrição"/>
-              <div style={{ marginTop:6 }}>
-                <textarea placeholder="Detalhes adicionais..." rows={3}
-                  value={f.descricao} onChange={e => set('descricao', e.target.value)}
-                  style={{ ...IS, resize:'vertical', minHeight:80, lineHeight:1.5 }}
-                  onFocus={focusOn} onBlur={focusOff}/>
-              </div>
-            </div>
-          </div>
-
-          {/* actions */}
-          <div style={{ display:'flex', justifyContent:'flex-end', gap:10,
-            paddingTop:8, borderTop:'1px solid var(--z3)' }}>
-            <button onClick={onCancel}
-              style={{ background:'transparent', border:'1px solid var(--z4)', color:'var(--t3)',
-                padding:'9px 18px', borderRadius:'var(--r)', cursor:'pointer',
-                fontFamily:'var(--ff)', fontSize:13, fontWeight:500, transition:'all .15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor='var(--z5)'; e.currentTarget.style.color='var(--t2)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor='var(--z4)'; e.currentTarget.style.color='var(--t3)'; }}>
-              Cancelar
-            </button>
-            <button onClick={submit}
-              style={{ background:'var(--ac)', border:'none', color:'#fff',
-                padding:'9px 20px', borderRadius:'var(--r)', cursor:'pointer',
-                fontFamily:'var(--ff)', fontSize:13, fontWeight:600,
-                display:'flex', alignItems:'center', gap:6, transition:'all .15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='var(--ac3)'; e.currentTarget.style.transform='translateY(-1px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='var(--ac)'; e.currentTarget.style.transform='none'; }}>
-              <PlusIcon s={13}/> Salvar
-            </button>
-          </div>
-        </div>
-      );
     }
-
-    /* ── Dashboard ── */
-    function Dashboard({ notes }) {
-      const total  = useMemo(() => notes.reduce((s,n) => s + n.valorJuros, 0), [notes]);
-      const pago   = useMemo(() => notes.reduce((s,n) => {
-        const paid = Object.keys(n.paidMap || {}).length;
-        const pv   = n.valorJuros / n.parcelas;
-        return s + paid * pv;
-      }, 0), [notes]);
-      const byCat  = useMemo(() => CATS.reduce((a,c) => {
-        a[c.id] = notes.filter(n => n.categoria === c.id).reduce((s,n) => s + n.valorJuros, 0);
-        return a;
-      }, {}), [notes]);
-      const progPct = total > 0 ? (pago / total) * 100 : 0;
-
-      return (
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {/* hero */}
-          <div style={{ background:'linear-gradient(135deg,var(--z2) 0%,#0f172a 100%)',
-            border:'1px solid #1e2d4a', borderRadius:'var(--r3)', padding:'26px 28px 22px',
-            position:'relative', overflow:'hidden' }}>
-            <div style={{ position:'absolute', right:-30, top:-30, width:160, height:160,
-              background:'radial-gradient(circle,#3b82f610,transparent 70%)', pointerEvents:'none' }}/>
-            <div style={{ fontFamily:'var(--fm)', fontSize:10, textTransform:'uppercase',
-              letterSpacing:'.15em', color:'var(--t3)', marginBottom:10 }}>Total acumulado</div>
-            <div style={{ fontSize:36, fontWeight:700, letterSpacing:'-.04em', color:'var(--t1)',
-              lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{fmt(total)}</div>
-            <div style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--t3)', marginTop:8, marginBottom:14 }}>
-              {notes.length === 0 ? 'nenhuma anotação' : `em ${notes.length} anotaç${notes.length===1?'ão':'ões'}`}
-            </div>
-            {/* paid progress */}
-            {total > 0 && (
-              <>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                  <span style={{ fontFamily:'var(--fm)', fontSize:10, color:'var(--ok)', letterSpacing:'.06em' }}>
-                    PAGO {fmt(pago)}
-                  </span>
-                  <span style={{ fontFamily:'var(--fm)', fontSize:10, color:'var(--t3)' }}>
-                    {progPct.toFixed(0)}%
-                  </span>
-                </div>
-                <div style={{ height:4, background:'#ffffff10', borderRadius:99, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${progPct}%`, borderRadius:99,
-                    background:'linear-gradient(90deg,var(--ok2),var(--ok))',
-                    transition:'width .5s ease' }}/>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* category bars */}
-          <div style={{ background:'var(--z2)', border:'1px solid var(--z3)',
-            borderRadius:'var(--r2)', padding:'16px 20px',
-            display:'flex', flexDirection:'column', gap:11 }}>
-            {CATS.map(c => {
-              const v = byCat[c.id] || 0;
-              const pct = total > 0 ? (v / total) * 100 : 0;
-              return (
-                <div key={c.id}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
-                    <span style={{ fontSize:12, color:'var(--t2)', display:'flex', alignItems:'center', gap:6 }}>
-                      <span style={{ width:6, height:6, borderRadius:99, background:c.color, display:'inline-block' }}/>
-                      {c.icon} {c.id}
-                    </span>
-                    <span style={{ fontFamily:'var(--fm)', fontSize:11, color: v > 0 ? 'var(--t1)' : 'var(--t4)' }}>
-                      {fmtS(v)}
-                    </span>
-                  </div>
-                  <div style={{ height:3, background:'var(--z3)', borderRadius:99, overflow:'hidden' }}>
-                    <div style={{ height:'100%', background:c.color, width:`${pct}%`,
-                      borderRadius:99, transition:'width .4s cubic-bezier(.4,0,.2,1)', opacity: v > 0 ? 1 : 0.2 }}/>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    /* ── Filter bar ── */
-    function FilterBar({ active, onChange }) {
-      const filters = [{ id:'todas', label:'Todas' }, ...CATS.map(c => ({ id:c.id, label:`${c.icon} ${c.id}` }))];
-      return (
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {filters.map(f => {
-            const on = active === f.id;
-            return (
-              <button key={f.id} onClick={() => onChange(f.id)}
-                style={{ background: on ? 'var(--ac)' : 'transparent',
-                  border:`1.5px solid ${on ? 'var(--ac)' : 'var(--z4)'}`,
-                  color: on ? '#fff' : 'var(--t3)', padding:'5px 12px', borderRadius:99,
-                  fontFamily:'var(--ff)', fontSize:12, fontWeight:600, cursor:'pointer',
-                  transition:'all .15s', whiteSpace:'nowrap' }}
-                onMouseEnter={e => { if (!on) { e.currentTarget.style.borderColor='var(--z5)'; e.currentTarget.style.color='var(--t2)'; }}}
-                onMouseLeave={e => { if (!on) { e.currentTarget.style.borderColor='var(--z4)'; e.currentTarget.style.color='var(--t3)'; }}}>
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
-      );
-    }
-
-    /* ── Toast ── */
-    function Toast({ msg }) {
-      if (!msg) return null;
-      return (
-        <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)',
-          background:'var(--z3)', border:'1px solid var(--z4)', color:'var(--t1)',
-          padding:'10px 20px', borderRadius:'var(--r2)', fontFamily:'var(--ff)',
-          fontSize:13, fontWeight:500, boxShadow:'0 8px 32px #00000080',
-          zIndex:1000, whiteSpace:'nowrap', animation:'toastIn .25s ease', pointerEvents:'none' }}>
-          {msg}
-        </div>
-      );
-    }
-
-    /* ── App ── */
-    function App() {
-      const { notes, add, remove, update } = useNotes();
-      const { toast, show } = useToast();
-      const [showForm, setShowForm] = useState(false);
-      const [filter,   setFilter]   = useState('todas');
-      const [sw,       setSw]       = useState(null);
-
-      useEffect(() => {
-        if (!('serviceWorker' in navigator)) return;
-        navigator.serviceWorker.register('./service-worker.js').then(reg => {
-          reg.addEventListener('updatefound', () => {
-            const nw = reg.installing; if (!nw) return;
-            nw.addEventListener('statechange', () => {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) setSw(nw);
-            });
-          });
-        }).catch(() => {});
-        let ref = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!ref) { ref = true; window.location.reload(); }
-        });
-      }, []);
-
-      const handleSave      = n  => { add(n); setShowForm(false); show('✓ Anotação salva!'); };
-      const handleDelete    = id => { remove(id); show('Nota removida.'); };
-      const handleTogglePaid = (id, paidMap) => {
-        update(id, n => ({ ...n, paidMap }));
-        const count = Object.keys(paidMap).length;
-        const note  = notes.find(n => n.id === id);
-        if (note && count === note.parcelas) show('🎉 Todas as parcelas pagas!');
-      };
-
-      const filtered = filter === 'todas' ? notes : notes.filter(n => n.categoria === filter);
-      const bo = sw ? 45 : 0;
-
-      return (
-        <>
-          {sw && (
-            <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:999,
-              background:'linear-gradient(90deg,#1e3a8a,#1d4ed8)', padding:'10px 20px',
-              display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
-              fontSize:13, color:'#e0f2fe' }}>
-              <span style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <RefreshIcon s={13}/> Nova versão disponível
-              </span>
-              <button onClick={() => sw.postMessage({ type:'SKIP_WAITING' })}
-                style={{ background:'#fff', color:'#1d4ed8', border:'none', padding:'4px 14px',
-                  borderRadius:6, fontFamily:'var(--ff)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                Atualizar agora
-              </button>
-            </div>
-          )}
-
-          <div style={{ maxWidth:720, margin:'0 auto', padding:'0 16px', paddingTop:bo }}>
-            <header style={{ position:'sticky', top:bo, zIndex:100, background:'#09090bec',
-              backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-              borderBottom:'1px solid var(--z3)', margin:'0 -16px', padding:'14px 16px' }}>
-              <div style={{ maxWidth:720, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ width:30, height:30, background:'var(--ac)', borderRadius:9,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:14, fontWeight:800, color:'#fff', boxShadow:'0 0 12px #3b82f640' }}>F</span>
-                  <span style={{ fontSize:17, fontWeight:700, letterSpacing:'-.03em', color:'var(--t1)' }}>
-                    Fin<span style={{ color:'var(--ac2)' }}>Notes</span>
-                  </span>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--t4)',
-                    background:'var(--z2)', border:'1px solid var(--z3)', padding:'3px 10px', borderRadius:99 }}>
-                    {notes.length} nota{notes.length !== 1 ? 's' : ''}
-                  </span>
-                  <button onClick={() => setShowForm(v => !v)}
-                    style={{ background: showForm ? 'var(--z3)' : 'var(--ac)', border:'none', color:'#fff',
-                      padding:'7px 14px', borderRadius:9, cursor:'pointer',
-                      fontFamily:'var(--ff)', fontSize:12, fontWeight:600,
-                      display:'flex', alignItems:'center', gap:6, transition:'all .15s' }}>
-                    {showForm ? <><XIcon s={12}/> Fechar</> : <><PlusIcon s={12}/> Adicionar</>}
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <main style={{ display:'flex', flexDirection:'column', gap:32, padding:'28px 0 60px' }}>
-              <Dashboard notes={notes} />
-              {showForm && <AddNotePanel onSave={handleSave} onCancel={() => setShowForm(false)} />}
-              <section style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-                  <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'.12em', color:'var(--t3)' }}>Anotações</span>
-                  <FilterBar active={filter} onChange={setFilter} />
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {filtered.length === 0
-                    ? <div style={{ textAlign:'center', padding:'60px 20px', animation:'fadeIn .3s ease' }}>
-                        <div style={{ fontSize:30, marginBottom:12, opacity:.3 }}>◎</div>
-                        <p style={{ fontSize:14, fontWeight:600, color:'var(--t3)', marginBottom:4 }}>
-                          {filter === 'todas' ? 'Nenhuma anotação ainda' : `Nenhuma nota em ${filter}`}
-                        </p>
-                        <span style={{ fontFamily:'var(--fm)', fontSize:11, color:'var(--t4)' }}>
-                          {filter === 'todas' ? 'Clique em Adicionar para começar.' : 'Tente outro filtro.'}
-                        </span>
-                      </div>
-                    : filtered.map(n =>
-                        <NoteCard key={n.id} note={n}
-                          onDelete={handleDelete}
-                          onTogglePaid={handleTogglePaid}/>
-                      )
-                  }
-                </div>
-              </section>
-            </main>
-
-            <footer style={{ textAlign:'center', padding:'20px 0', fontFamily:'var(--fm)',
-              fontSize:11, color:'var(--t4)', borderTop:'1px solid var(--z3)' }}>
-              FinNotes · dados salvos localmente
-            </footer>
-          </div>
-          <Toast msg={toast} />
-        </>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>
