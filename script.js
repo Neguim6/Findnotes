@@ -1,14 +1,13 @@
 'use strict';
 
 const MASTER_PASSWORD = "258456";
-const RATE = 0.035; // Taxa padrão 3.5%
-let notes = JSON.parse(localStorage.getItem('finnotes_data_v53') || '[]');
+let notes = JSON.parse(localStorage.getItem('finnotes_data_v54') || '[]');
 let pendingAction = { id: null, type: null };
 
-// Preencher parcelas
-const sel = document.getElementById('in-parcelas');
+// Popular seletor de parcelas
+const selP = document.getElementById('in-parcelas');
 for(let i=1; i<=12; i++) {
-    sel.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`;
+    selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`;
 }
 
 function openModal(id) { 
@@ -18,45 +17,65 @@ function openModal(id) {
         setTimeout(() => document.getElementById('confirm-pwd').focus(), 150);
     }
 }
-
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 function addLog(msg) {
     const logs = document.getElementById('logs');
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    entry.textContent = `> /temp/sys_log_${Date.now()}.bin: ${msg.toUpperCase()}`;
+    entry.textContent = `> /temp/sys_${Date.now()}.log: ${msg.toUpperCase()}`;
     logs.prepend(entry);
 }
 
-// NOVO: Cálculo de juros detalhado
-function calcJuros() {
-    const v1 = parseFloat(document.getElementById('in-valor').value) || 0;
-    const p = parseInt(document.getElementById('in-parcelas').value);
-    
-    const v2 = (p === 1 ? v1 : v1 * (1 + (RATE * p)));
-    const jurosReais = v2 - v1;
+// NOVO: Analisador de Porcentagem
+function analisarPorcentagem() {
+    const v1 = parseFloat(document.getElementById('in-valor1').value) || 0;
+    const v2 = parseFloat(document.getElementById('in-valor2').value) || 0;
+    const label = document.getElementById('label-percent');
 
-    document.getElementById('in-total').value = v2.toFixed(2);
-    document.getElementById('label-juros').textContent = `Juros: R$ ${jurosReais.toFixed(2)}`;
+    if (v1 > 0 && v2 >= v1) {
+        const taxa = ((v2 - v1) / v1) * 100;
+        label.textContent = `Taxa: ${taxa.toFixed(2)}%`;
+        label.style.color = "var(--ac)";
+    } else if (v2 < v1 && v2 > 0) {
+        label.textContent = "Valor 2 menor que Valor 1";
+        label.style.color = "var(--err)";
+    } else {
+        label.textContent = "Taxa: 0.00%";
+        label.style.color = "var(--t3)";
+    }
 }
 
 function saveNote() {
     const nome = document.getElementById('in-nome').value;
-    const total = parseFloat(document.getElementById('in-total').value);
-    if(!nome || isNaN(total)) return;
+    const total = parseFloat(document.getElementById('in-valor2').value); // Usamos o Valor 2 como o total final
+    if(!nome || isNaN(total)) return alert("Preencha descrição e valor final.");
 
-    notes.unshift({ id: Date.now(), nome, total, parcelas: parseInt(document.getElementById('in-parcelas').value), cat: document.getElementById('in-cat').value, pagas: 0 });
+    notes.unshift({ 
+        id: Date.now(), 
+        nome, 
+        total, 
+        parcelas: parseInt(document.getElementById('in-parcelas').value), 
+        cat: document.getElementById('in-cat').value, 
+        pagas: 0 
+    });
+    
     sync();
     closeModal('modal-add');
-    addLog(`Arquivo criado: ${nome}`);
+    addLog(`Registro salvo: ${nome}`);
+    
+    // Reset campos
+    document.getElementById('in-nome').value = '';
+    document.getElementById('in-valor1').value = '';
+    document.getElementById('in-valor2').value = '';
+    document.getElementById('label-percent').textContent = "Taxa: 0.00%";
 }
 
 function askAuth(id, type) {
     pendingAction = { id, type };
     const btn = document.getElementById('pwd-confirm-btn');
-    document.getElementById('pwd-title').textContent = type === 'pay' ? "Confirmar Pagamento" : "Confirmar Exclusão";
-    document.getElementById('pwd-desc').textContent = type === 'pay' ? "Baixa de parcela no sistema." : "DELETAR REGISTRO PERMANENTEMENTE.";
+    document.getElementById('pwd-title').textContent = type === 'pay' ? "Validar Pagamento" : "Validar Exclusão";
+    document.getElementById('pwd-desc').textContent = type === 'pay' ? "Processando baixa de parcela..." : "AVISO: Removendo permanentemente da memória.";
     btn.style.background = type === 'pay' ? "var(--ok)" : "var(--err)";
     btn.onclick = validateAuth;
     openModal('modal-pwd');
@@ -68,13 +87,13 @@ function validateAuth() {
             notes = notes.map(n => {
                 if(n.id === pendingAction.id && n.pagas < n.parcelas) {
                     n.pagas += 1;
-                    addLog(`Pagamento: ${n.nome} (${n.pagas}/${n.parcelas})`);
+                    addLog(`Parcela confirmada: ${n.nome} (${n.pagas}/${n.parcelas})`);
                 }
                 return n;
             });
         } else {
             notes = notes.filter(n => n.id !== pendingAction.id);
-            addLog("Exclusão realizada.");
+            addLog("Remoção concluída com sucesso.");
         }
         sync();
         closeModal('modal-pwd');
@@ -84,20 +103,20 @@ function validateAuth() {
 }
 
 function sync() {
-    localStorage.setItem('finnotes_data_v53', JSON.stringify(notes));
+    localStorage.setItem('finnotes_data_v54', JSON.stringify(notes));
     render();
 }
 
 function render() {
     const list = document.getElementById('notes-list');
     list.innerHTML = '';
-    let soma = 0;
+    let somaTotal = 0;
 
     notes.forEach(n => {
-        soma += n.total;
+        somaTotal += n.total;
         const prog = (n.pagas / n.parcelas) * 100;
         const isDone = n.pagas === n.parcelas;
-        const color = { 'Infraestrutura': '#34d399', 'Alimentação': '#f97316', 'Outros': '#94a3b8' }[n.cat] || '#3b82f6';
+        const color = { 'Infraestrutura': '#34d399', 'Alimentação': '#f97316' }[n.cat] || '#3b82f6';
 
         const container = document.createElement('div');
         container.className = 'card-container';
@@ -105,11 +124,11 @@ function render() {
             <div class="delete-btn-bg" onclick="askAuth(${n.id}, 'delete')">APAGAR</div>
             <div class="card ${isDone ? 'completed' : ''}" id="card-${n.id}" style="--color:${isDone ? 'var(--ok)' : color}">
                 <button class="pc-delete" onclick="event.stopPropagation(); askAuth(${n.id}, 'delete')">APAGAR</button>
-                <div style="display:flex; justify-content:space-between">
+                <div style="display:flex; justify-content:space-between; gap:10px;">
                     <div style="flex:1">
-                        <b>${n.nome}</b>
-                        <div style="font-size:11px; color:var(--t3); margin-top:3px;">
-                            ${isDone ? '✓ FINALIZADO' : `Parcela: ${n.pagas} de ${n.parcelas}`}
+                        <b>${n.nome} ${isDone ? '✓' : ''}</b>
+                        <div style="font-size:11px; color:var(--t3); margin-top:4px;">
+                            ${isDone ? 'PAGAMENTO TOTALIZADO' : `Parcela ${n.pagas} de ${n.parcelas}`}
                         </div>
                     </div>
                     <div style="text-align:right"><b>R$ ${n.total.toFixed(2)}</b></div>
@@ -119,21 +138,21 @@ function render() {
         `;
 
         const el = container.querySelector('.card');
-        let sX = 0;
-        el.ontouchstart = e => { sX = e.touches[0].clientX; el.style.transition = 'none'; };
+        let startX = 0;
+        el.ontouchstart = e => { startX = e.touches[0].clientX; el.style.transition = 'none'; };
         el.ontouchmove = e => {
-            let d = e.touches[0].clientX - sX;
-            if(d > 0 && d < 120) el.style.transform = `translateX(${d}px)`;
+            let diff = e.touches[0].clientX - startX;
+            if(diff > 0 && diff < 120) el.style.transform = `translateX(${diff}px)`;
         };
         el.ontouchend = e => {
             el.style.transition = 'all 0.3s ease';
-            let d = e.changedTouches[0].clientX - sX;
-            if(d > 80) { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }
-            else { el.style.transform = 'translateX(0)'; if(Math.abs(d) < 5 && !isDone) askAuth(n.id, 'pay'); }
+            let diff = e.changedTouches[0].clientX - startX;
+            if(diff > 80) { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }
+            else { el.style.transform = 'translateX(0)'; if(Math.abs(diff) < 5 && !isDone) askAuth(n.id, 'pay'); }
         };
         el.onclick = () => { if(window.innerWidth > 768 && !isDone) askAuth(n.id, 'pay'); };
         list.appendChild(container);
     });
-    document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 render();
