@@ -1,10 +1,25 @@
 'use strict';
 
 const MASTER_PASSWORD = "258456";
-let notes = JSON.parse(localStorage.getItem('finnotes_data_v54') || '[]');
+let notes = JSON.parse(localStorage.getItem('finnotes_v6_data') || '[]');
 let pendingAction = { id: null, type: null };
 
-// Popular seletor de parcelas
+// Função de Entrada no Sistema
+function checkLogin() {
+    const input = document.getElementById('main-login-pwd');
+    if(input.value === MASTER_PASSWORD) {
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        addLog("Acesso autorizado pelo administrador");
+        render(); // Só renderiza se logar
+    } else {
+        alert("SENHA INCORRETA");
+        input.value = '';
+        input.focus();
+    }
+}
+
+// Preencher parcelas
 const selP = document.getElementById('in-parcelas');
 for(let i=1; i<=12; i++) {
     selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`;
@@ -21,61 +36,44 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 function addLog(msg) {
     const logs = document.getElementById('logs');
+    if(!logs) return;
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    entry.textContent = `> /temp/sys_${Date.now()}.log: ${msg.toUpperCase()}`;
+    entry.textContent = `> /temp/auth_${Date.now()}.sys: ${msg.toUpperCase()}`;
     logs.prepend(entry);
 }
 
-// NOVO: Analisador de Porcentagem
 function analisarPorcentagem() {
     const v1 = parseFloat(document.getElementById('in-valor1').value) || 0;
     const v2 = parseFloat(document.getElementById('in-valor2').value) || 0;
     const label = document.getElementById('label-percent');
-
     if (v1 > 0 && v2 >= v1) {
         const taxa = ((v2 - v1) / v1) * 100;
         label.textContent = `Taxa: ${taxa.toFixed(2)}%`;
-        label.style.color = "var(--ac)";
-    } else if (v2 < v1 && v2 > 0) {
-        label.textContent = "Valor 2 menor que Valor 1";
-        label.style.color = "var(--err)";
     } else {
         label.textContent = "Taxa: 0.00%";
-        label.style.color = "var(--t3)";
     }
 }
 
 function saveNote() {
     const nome = document.getElementById('in-nome').value;
-    const total = parseFloat(document.getElementById('in-valor2').value); // Usamos o Valor 2 como o total final
+    const total = parseFloat(document.getElementById('in-valor2').value);
     if(!nome || isNaN(total)) return alert("Preencha descrição e valor final.");
 
-    notes.unshift({ 
-        id: Date.now(), 
-        nome, 
-        total, 
-        parcelas: parseInt(document.getElementById('in-parcelas').value), 
-        cat: document.getElementById('in-cat').value, 
-        pagas: 0 
-    });
-    
+    notes.unshift({ id: Date.now(), nome, total, parcelas: parseInt(document.getElementById('in-parcelas').value), cat: document.getElementById('in-cat').value, pagas: 0 });
     sync();
     closeModal('modal-add');
     addLog(`Registro salvo: ${nome}`);
     
-    // Reset campos
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor1').value = '';
     document.getElementById('in-valor2').value = '';
-    document.getElementById('label-percent').textContent = "Taxa: 0.00%";
 }
 
 function askAuth(id, type) {
     pendingAction = { id, type };
     const btn = document.getElementById('pwd-confirm-btn');
     document.getElementById('pwd-title').textContent = type === 'pay' ? "Validar Pagamento" : "Validar Exclusão";
-    document.getElementById('pwd-desc').textContent = type === 'pay' ? "Processando baixa de parcela..." : "AVISO: Removendo permanentemente da memória.";
     btn.style.background = type === 'pay' ? "var(--ok)" : "var(--err)";
     btn.onclick = validateAuth;
     openModal('modal-pwd');
@@ -85,15 +83,11 @@ function validateAuth() {
     if(document.getElementById('confirm-pwd').value === MASTER_PASSWORD) {
         if(pendingAction.type === 'pay') {
             notes = notes.map(n => {
-                if(n.id === pendingAction.id && n.pagas < n.parcelas) {
-                    n.pagas += 1;
-                    addLog(`Parcela confirmada: ${n.nome} (${n.pagas}/${n.parcelas})`);
-                }
+                if(n.id === pendingAction.id && n.pagas < n.parcelas) n.pagas += 1;
                 return n;
             });
         } else {
             notes = notes.filter(n => n.id !== pendingAction.id);
-            addLog("Remoção concluída com sucesso.");
         }
         sync();
         closeModal('modal-pwd');
@@ -103,12 +97,13 @@ function validateAuth() {
 }
 
 function sync() {
-    localStorage.setItem('finnotes_data_v54', JSON.stringify(notes));
+    localStorage.setItem('finnotes_v6_data', JSON.stringify(notes));
     render();
 }
 
 function render() {
     const list = document.getElementById('notes-list');
+    if(!list) return;
     list.innerHTML = '';
     let somaTotal = 0;
 
@@ -124,11 +119,11 @@ function render() {
             <div class="delete-btn-bg" onclick="askAuth(${n.id}, 'delete')">APAGAR</div>
             <div class="card ${isDone ? 'completed' : ''}" id="card-${n.id}" style="--color:${isDone ? 'var(--ok)' : color}">
                 <button class="pc-delete" onclick="event.stopPropagation(); askAuth(${n.id}, 'delete')">APAGAR</button>
-                <div style="display:flex; justify-content:space-between; gap:10px;">
-                    <div style="flex:1">
+                <div style="display:flex; justify-content:space-between">
+                    <div>
                         <b>${n.nome} ${isDone ? '✓' : ''}</b>
                         <div style="font-size:11px; color:var(--t3); margin-top:4px;">
-                            ${isDone ? 'PAGAMENTO TOTALIZADO' : `Parcela ${n.pagas} de ${n.parcelas}`}
+                            ${isDone ? 'FINALIZADO' : `Parcela ${n.pagas} de ${n.parcelas}`}
                         </div>
                     </div>
                     <div style="text-align:right"><b>R$ ${n.total.toFixed(2)}</b></div>
@@ -145,7 +140,7 @@ function render() {
             if(diff > 0 && diff < 120) el.style.transform = `translateX(${diff}px)`;
         };
         el.ontouchend = e => {
-            el.style.transition = 'all 0.3s ease';
+            el.style.transition = '0.3s';
             let diff = e.changedTouches[0].clientX - startX;
             if(diff > 80) { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }
             else { el.style.transform = 'translateX(0)'; if(Math.abs(diff) < 5 && !isDone) askAuth(n.id, 'pay'); }
@@ -155,4 +150,3 @@ function render() {
     });
     document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-render();
