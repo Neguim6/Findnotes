@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finnotes-v11';
+const CACHE_NAME = 'finnotes-v12';
 const ASSETS = ['./', './index.html', './script.js', './manifest.json'];
 
 self.addEventListener('install', (e) => {
