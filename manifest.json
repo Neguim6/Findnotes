@@ -1,7 +1,6 @@
 {
-  "name": "FinNotes Ultra Pro",
+  "name": "FinNotes Pro Ultra",
   "short_name": "FinNotes",
-  "description": "Controle de Infraestrutura e Finanças",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#09090b",
@@ -10,7 +9,8 @@
     {
       "src": "https://cdn-icons-png.flaticon.com/512/5511/5511413.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
