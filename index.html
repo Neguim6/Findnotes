@@ -3,103 +3,111 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#09090b" />
-    <title>FinNotes v4.7 - Ultra</title>
+    <meta name="theme-color" content="#3b82f6" />
+    <link rel="manifest" href="manifest.json" />
+    <title>FinNotes v4.8</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
-            --z4: #27272a; --z5: #3f3f46; --t1: #fafafa; --t2: #a1a1aa; 
-            --t3: #71717a; --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
-            --r: 14px; --r2: 20px; --ff: 'Geist', system-ui, sans-serif;
+            --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a; 
+            --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
+            --r: 14px; --ff: 'Geist', system-ui, sans-serif;
         }
 
-        body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 15px; display: flex; justify-content: center; overflow-x: hidden; }
-        #app { width: 100%; max-width: 500px; padding-bottom: 100px; }
+        body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 15px; display: flex; justify-content: center; }
+        #app { width: 100%; max-width: 500px; padding-bottom: 120px; }
 
-        .dashboard { background: var(--z2); padding: 24px; border-radius: var(--r2); border: 1px solid var(--z3); margin-bottom: 20px; }
-        .total-valor { font-size: clamp(24px, 8vw, 32px); font-weight: 800; margin: 6px 0; letter-spacing: -1px; }
+        .dashboard { background: var(--z2); padding: 20px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
+        .total-valor { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
 
-        /* Swipe para a Direita */
+        /* Estilo para Mobile (Swipe) */
         .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); background: var(--err); }
-        .delete-btn { position: absolute; left: 0; top: 0; bottom: 0; width: 80px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; z-index: 1; }
+        .delete-btn { position: absolute; left: 0; top: 0; bottom: 0; width: 70px; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 800; }
 
         .card { 
-            background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; 
-            position: relative; z-index: 2; transition: transform 0.3s ease; 
-            cursor: pointer; touch-action: pan-y; 
+            background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 16px; 
+            position: relative; z-index: 2; transition: transform 0.3s ease; cursor: pointer;
         }
-        .card.is-paid { border-color: #22c55e30; background: #111b14; }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
 
-        .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
+        /* Botão de excluir visível no Desktop */
+        .pc-delete { display: none; position: absolute; right: 10px; top: 10px; background: #ef444420; color: #ef4444; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; }
+        @media (min-width: 768px) { .pc-delete { display: block; } }
 
-        .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--color); text-transform: uppercase; }
+        .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--ac); transition: width 0.5s ease; }
 
-        input, select { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; font-size: 15px; outline: none; }
-        
-        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(10px); }
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(10px); }
         .modal.active { display: flex; }
 
-        .btn-main { width: 100%; padding: 14px; background: var(--ac); border: none; color: white; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 8px; color: var(--t1); padding: 12px; margin-top: 8px; outline: none; }
+
+        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; background: var(--ac); color: white; border-radius: 18px; border: none; font-size: 28px; z-index: 100; cursor: pointer; }
+
+        /* Logs na Tela */
+        #log-area { margin-top: 30px; border-top: 1px solid var(--z3); padding-top: 15px; }
+        .log-entry { font-size: 11px; color: var(--t3); padding: 4px 0; border-bottom: 1px solid #1f1f23; font-family: monospace; }
     </style>
 </head>
 <body>
 
     <div id="app">
-        <header style="margin-bottom: 20px; text-align: center;">
-            <h1 style="font-size: 22px; font-weight: 800;">Fin<span style="color:var(--ac)">Notes</span> Pro</h1>
-            <div style="font-size: 10px; color: var(--t3);">SISTEMA DE INFRAESTRUTURA E FINANÇAS</div>
+        <header style="text-align: center; margin-bottom: 20px;">
+            <h1 style="font-size: 20px;">FinNotes <span style="color:var(--ac)">v4.8</span></h1>
+            <p style="font-size: 10px; color: var(--t3);">SISTEMA DE PAGAMENTOS E INFRA</p>
         </header>
 
         <div class="dashboard">
-            <div style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Comprometido</div>
+            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Comprometido Total</span>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
-            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--t3);">
-                <span id="label-pagas">Pagas: R$ 0</span>
-                <span id="label-pct" style="font-weight: 800; color: var(--ac);">0%</span>
-            </div>
-            <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width: 0%"></div></div>
+            <div class="progress-bg"><div id="total-progress" class="progress-fill"></div></div>
         </div>
 
         <div id="notes-list"></div>
-        <button class="fab" onclick="openMainModal()">+</button>
+
+        <div id="log-area">
+            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">LOG DE ATIVIDADES</h4>
+            <div id="logs"></div>
+        </div>
+
+        <button class="fab" onclick="openModal('modal')">+</button>
     </div>
 
     <div class="modal" id="modal">
-        <div class="dashboard" style="width: 100%; max-width: 400px;">
-            <h2 style="margin-bottom: 20px; font-size: 18px;">Novo Registro</h2>
-            <input type="text" id="in-nome" placeholder="Nome do Item">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                <input type="number" id="in-valor" placeholder="Valor Base" oninput="calcJuros()">
+        <div class="dashboard" style="width: 100%; max-width: 380px;">
+            <h3>Novo Registro</h3>
+            <input type="text" id="in-nome" placeholder="Item">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input type="number" id="in-valor" placeholder="Valor" oninput="calcJuros()">
                 <select id="in-parcelas" onchange="calcJuros()"></select>
             </div>
-            <input type="number" id="in-total" step="0.01" style="margin-top:15px; border-color: var(--ac);">
-            <select id="in-cat" style="margin-top:15px;">
+            <input type="number" id="in-total" step="0.01" style="border-color: var(--ac);">
+            <select id="in-cat">
                 <option value="Infraestrutura">🏠 Infraestrutura</option>
                 <option value="Alimentação">🍽 Alimentação</option>
-                <option value="Saúde">💊 Saúde</option>
                 <option value="Lazer">🎮 Lazer</option>
-                <option value="Outros">📦 Outros</option>
             </select>
-            <button class="btn-main" onclick="saveNote()">Gravar</button>
-            <button onclick="closeModal('modal')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:10px; cursor:pointer;">Cancelar</button>
+            <button onclick="saveNote()" style="width: 100%; padding: 12px; margin-top: 15px; background: var(--ac); border:none; border-radius: 8px; color:white; font-weight: bold;">Gravar</button>
+            <button onclick="closeModal('modal')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 10px;">Fechar</button>
         </div>
     </div>
 
     <div class="modal" id="pwd-modal">
-        <div class="dashboard" style="width: 100%; max-width: 320px; text-align: center;">
-            <h3 style="margin-bottom: 10px;">Segurança</h3>
-            <p style="font-size: 12px; color: var(--t3); margin-bottom: 20px;">Digite a senha para confirmar pagamento</p>
-            <input type="password" id="confirm-pwd" placeholder="******" style="text-align: center; font-size: 20px; letter-spacing: 5px;">
-            <button class="btn-main" onclick="validateAndPay()">Confirmar</button>
-            <button onclick="closeModal('pwd-modal')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:15px;">Voltar</button>
+        <div class="dashboard" style="width: 100%; max-width: 300px; text-align: center;">
+            <h3>Confirmar Senha</h3>
+            <input type="password" id="confirm-pwd" style="text-align: center; font-size: 20px;">
+            <button onclick="validateAndPay()" style="width: 100%; padding: 12px; margin-top: 15px; background: var(--ok); border:none; border-radius: 8px; color:white; font-weight: bold;">Validar</button>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Service Worker para PWA (Instalar no Celular)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
 </body>
 </html>
