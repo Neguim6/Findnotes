@@ -3,13 +3,7 @@
 // 1. PWA & AUTO-UPDATE
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) { 
-            window.location.reload(); 
-            refreshing = true; 
-        }
-    });
+    // REMOVIDO: window.location.reload() — causava perda de dados ao recarregar
 }
 
 // 2. Lógica de Instalação (PWA)
@@ -68,31 +62,45 @@ async function registerPeriodicSync() {
 }
 
 // 3. Sistema Base
-const K_ENC = "MjU4NDU2"; 
-let notes = JSON.parse(localStorage.getItem('finnotes_v12_data') || '[]');
+const K_ENC = "MjU4NDU2";
+let notes = [];
 let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
 
-// Recuperação de emergência: se localStorage vazio, tenta o IndexedDB
-async function tryRecoverFromIDB() {
-  if (notes.length > 0) return; // já tem dados, não precisa
-  try {
-    const req = indexedDB.open('finnotes_db', 1);
-    req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
-    req.onsuccess = (e) => {
-      const db = e.target.result;
-      const tx = db.transaction('kv', 'readonly');
-      const get = tx.objectStore('kv').get('notes');
-      get.onsuccess = () => {
-        if (get.result && get.result.length > 0) {
-          notes = get.result;
-          localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
-          render();
-          console.log(`FinNotes: ${notes.length} notas recuperadas do IndexedDB.`);
+// Carrega dados: localStorage primeiro, IDB como fallback imediato
+function loadNotes() {
+    try {
+        const raw = localStorage.getItem('finnotes_v12_data');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                notes = parsed;
+                return Promise.resolve();
+            }
         }
-      };
-    };
-  } catch (e) { /* silencioso */ }
+    } catch (e) {}
+
+    // localStorage vazio ou corrompido — tenta IDB
+    return new Promise((resolve) => {
+        try {
+            const req = indexedDB.open('finnotes_db', 1);
+            req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
+            req.onsuccess = (e) => {
+                const get = e.target.result.transaction('kv', 'readonly').objectStore('kv').get('notes');
+                get.onsuccess = () => {
+                    if (get.result && Array.isArray(get.result) && get.result.length > 0) {
+                        notes = get.result;
+                        // Restaura no localStorage também
+                        localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
+                        console.log(`FinNotes: ${notes.length} notas recuperadas do IndexedDB.`);
+                    }
+                    resolve();
+                };
+                get.onerror = () => resolve();
+            };
+            req.onerror = () => resolve();
+        } catch (e) { resolve(); }
+    });
 }
 
 function logout() {
@@ -106,11 +114,12 @@ function unlockApp() {
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     sessionStorage.setItem('finnotes_unlocked', '1');
-    saveNotesToIDB(notes);
-    registerPeriodicSync();
-    render();
-    tryRecoverFromIDB();
-    setTimeout(() => notifySwToCheck(notes), 1500);
+    loadNotes().then(() => {
+        render();
+        saveNotesToIDB(notes);
+        registerPeriodicSync();
+        setTimeout(() => notifySwToCheck(notes), 1500);
+    });
 }
 
 function checkLogin() {
