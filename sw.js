@@ -1,5 +1,5 @@
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open('fin-v1').then((cache) => cache.addAll(['index.html', 'script.js'])));
+  e.waitUntil(caches.open('fin-v51').then((cache) => cache.addAll(['index.html', 'script.js'])));
 });
 
 self.addEventListener('fetch', (e) => {
