@@ -417,16 +417,18 @@ function render() {
             askAuth(n.id, 'delete');
         });
 
-        // GESTO MOBILE — swipe direita para apagar, com zona morta no botão
+        // GESTO MOBILE
         let startX = 0;
         let startY = 0;
-        let dirLocked = null; // 'h' = horizontal, 'v' = vertical, null = indefinido
+        let dirLocked = null; // 'h' | 'v' | null
         let touchStartedOnButton = false;
+        let moved = false;
 
         const resetCard = () => {
-            el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            el.style.transform = 'translateX(0)';
+            el.style.transition = '0.25s ease';
+            el.style.transform = '';
             dirLocked = null;
+            moved = false;
         };
 
         el.addEventListener('touchstart', (e) => {
@@ -435,46 +437,61 @@ function render() {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
             dirLocked = null;
+            moved = false;
             el.style.transition = 'none';
         }, { passive: true });
 
         el.addEventListener('touchmove', (e) => {
-            if (touchStartedOnButton) return;
-            const moveX = e.touches[0].clientX - startX;
-            const moveY = e.touches[0].clientY - startY;
+            if (touchStartedOnButton || dirLocked === 'v') return;
 
-            // Determina direção dominante na primeira vez que passa de 10px
-            if (!dirLocked && (Math.abs(moveX) > 10 || Math.abs(moveY) > 10)) {
-                dirLocked = Math.abs(moveX) > Math.abs(moveY) ? 'h' : 'v';
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+
+            // Só decide direção após 12px de movimento
+            if (!dirLocked) {
+                if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+                // Vertical ou diagonal com mais vertical → trava como vertical e para tudo
+                if (Math.abs(dy) >= Math.abs(dx) * 0.7) {
+                    dirLocked = 'v';
+                    resetCard();
+                    return;
+                }
+                dirLocked = 'h';
             }
 
-            // Só move o card se for claramente horizontal
-            if (dirLocked === 'h' && moveX > 0) {
-                el.style.transform = `translateX(${moveX}px)`;
+            // Só arrasta para a direita
+            if (dirLocked === 'h' && dx > 0) {
+                moved = true;
+                el.style.transform = `translateX(${dx}px)`;
             }
         }, { passive: true });
 
-        el.addEventListener('touchend', (e) => {
+        const onTouchEnd = (e) => {
             if (touchStartedOnButton) return;
-            const diffX = e.changedTouches[0].clientX - startX;
-            const diffY = e.changedTouches[0].clientY - startY;
 
-            if (dirLocked === 'h' && diffX > 200 && Math.abs(diffY) < 80) {
-                el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                el.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    askAuth(n.id, 'delete');
-                    el.style.transform = 'translateX(0)';
-                }, 250);
+            if (!moved || dirLocked !== 'h') {
+                resetCard();
+                // Tap puro — abre baixa
+                const dx = e.changedTouches ? e.changedTouches[0].clientX - startX : 0;
+                const dy = e.changedTouches ? e.changedTouches[0].clientY - startY : 0;
+                const isTap = Math.abs(dx) < 10 && Math.abs(dy) < 10;
+                if (isTap && !isDone && e.type === 'touchend') askAuth(n.id, 'pay');
+                return;
+            }
+
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+
+            if (dx > 200 && Math.abs(dy) < 60) {
+                el.style.transition = '0.25s ease';
+                el.style.transform = 'translateX(110%)';
+                setTimeout(() => { askAuth(n.id, 'delete'); resetCard(); }, 260);
             } else {
                 resetCard();
-                const isTap = Math.abs(diffX) < 10 && Math.abs(diffY) < 10;
-                if (isTap && !isDone) askAuth(n.id, 'pay');
             }
-            dirLocked = null;
-        });
+        };
 
-        // Quando o browser assume o scroll, cancela o gesto sem deixar o card deslocado
+        el.addEventListener('touchend', onTouchEnd);
         el.addEventListener('touchcancel', resetCard, { passive: true });
 
         // Desktop: click para baixa
