@@ -73,6 +73,28 @@ let notes = JSON.parse(localStorage.getItem('finnotes_v12_data') || '[]');
 let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
 
+// Recuperação de emergência: se localStorage vazio, tenta o IndexedDB
+async function tryRecoverFromIDB() {
+  if (notes.length > 0) return; // já tem dados, não precisa
+  try {
+    const req = indexedDB.open('finnotes_db', 1);
+    req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      const tx = db.transaction('kv', 'readonly');
+      const get = tx.objectStore('kv').get('notes');
+      get.onsuccess = () => {
+        if (get.result && get.result.length > 0) {
+          notes = get.result;
+          localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
+          render();
+          console.log(`FinNotes: ${notes.length} notas recuperadas do IndexedDB.`);
+        }
+      };
+    };
+  } catch (e) { /* silencioso */ }
+}
+
 function logout() {
     sessionStorage.removeItem('finnotes_unlocked');
     document.getElementById('app').style.display = 'none';
@@ -87,7 +109,7 @@ function unlockApp() {
     saveNotesToIDB(notes);
     registerPeriodicSync();
     render();
-    // Checar alertas via SW logo ao abrir
+    tryRecoverFromIDB();
     setTimeout(() => notifySwToCheck(notes), 1500);
 }
 
