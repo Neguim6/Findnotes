@@ -417,82 +417,11 @@ function render() {
             askAuth(n.id, 'delete');
         });
 
-        // GESTO MOBILE
-        let startX = 0;
-        let startY = 0;
-        let dirLocked = null; // 'h' | 'v' | null
-        let touchStartedOnButton = false;
-        let moved = false;
-
-        const resetCard = () => {
-            el.style.transition = '0.25s ease';
-            el.style.transform = '';
-            dirLocked = null;
-            moved = false;
-        };
-
-        el.addEventListener('touchstart', (e) => {
-            touchStartedOnButton = !!e.target.closest('.btn-del-fixo');
-            if (touchStartedOnButton) return;
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            dirLocked = null;
-            moved = false;
-            el.style.transition = 'none';
-        }, { passive: true });
-
-        el.addEventListener('touchmove', (e) => {
-            if (touchStartedOnButton || dirLocked === 'v') return;
-
-            const dx = e.touches[0].clientX - startX;
-            const dy = e.touches[0].clientY - startY;
-
-            // Só decide direção após 12px de movimento
-            if (!dirLocked) {
-                if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
-                // Vertical ou diagonal com mais vertical → trava como vertical e para tudo
-                if (Math.abs(dy) >= Math.abs(dx) * 0.7) {
-                    dirLocked = 'v';
-                    resetCard();
-                    return;
-                }
-                dirLocked = 'h';
-            }
-
-            // Só arrasta para a direita
-            if (dirLocked === 'h' && dx > 0) {
-                moved = true;
-                el.style.transform = `translateX(${dx}px)`;
-            }
-        }, { passive: true });
-
-        const onTouchEnd = (e) => {
-            if (touchStartedOnButton) return;
-
-            if (!moved || dirLocked !== 'h') {
-                resetCard();
-                // Tap puro — abre baixa
-                const dx = e.changedTouches ? e.changedTouches[0].clientX - startX : 0;
-                const dy = e.changedTouches ? e.changedTouches[0].clientY - startY : 0;
-                const isTap = Math.abs(dx) < 10 && Math.abs(dy) < 10;
-                if (isTap && !isDone && e.type === 'touchend') askAuth(n.id, 'pay');
-                return;
-            }
-
-            const dx = e.changedTouches[0].clientX - startX;
-            const dy = e.changedTouches[0].clientY - startY;
-
-            if (dx > 200 && Math.abs(dy) < 60) {
-                el.style.transition = '0.25s ease';
-                el.style.transform = 'translateX(110%)';
-                setTimeout(() => { askAuth(n.id, 'delete'); resetCard(); }, 260);
-            } else {
-                resetCard();
-            }
-        };
-
-        el.addEventListener('touchend', onTouchEnd);
-        el.addEventListener('touchcancel', resetCard, { passive: true });
+        // TAP no card = baixar parcela (mobile e desktop)
+        el.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-del-fixo')) return;
+            if (!isDone) askAuth(n.id, 'pay');
+        });
 
         // Desktop: click para baixa
         el.onclick = (e) => { 
