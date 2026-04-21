@@ -158,6 +158,104 @@ function sync() {
     render(); 
 }
 
+// ─── SISTEMA DE ALERTAS ───────────────────────────────────────────────────────
+
+// Retorna o status de alerta de uma nota: 'hoje', 'proximo' (≤3 dias), ou null
+function getAlertStatus(n) {
+    if (!n.dataVenc || n.pagas === n.parcelas) return null;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const [ano, mes, dia] = n.dataVenc.split('-').map(Number);
+    const venc = new Date(ano, mes - 1, dia);
+    venc.setHours(0, 0, 0, 0);
+    const diff = Math.round((venc - hoje) / 86400000); // dias
+    if (diff === 0) return 'hoje';
+    if (diff > 0 && diff <= 3) return 'proximo';
+    if (diff < 0) return 'vencido';
+    return null;
+}
+
+// Solicitar permissão de notificação push
+function requestNotifPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+// Dispara notificação nativa se permitido
+function sendNotif(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/552/552791.png' });
+    }
+}
+
+// Verifica e exibe o banner de alertas no topo do app
+function checkAlerts() {
+    const alertas = notes.filter(n => {
+        const s = getAlertStatus(n);
+        return s === 'hoje' || s === 'proximo' || s === 'vencido';
+    });
+
+    let banner = document.getElementById('alert-banner');
+    if (!banner) return;
+
+    if (alertas.length === 0) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    banner.style.display = 'block';
+    banner.innerHTML = '';
+
+    alertas.forEach(n => {
+        const s = getAlertStatus(n);
+        const [ano, mes, dia] = n.dataVenc.split('-');
+        const dataFmt = `${dia}/${mes}/${ano}`;
+
+        const colors = {
+            'vencido': { bg: 'rgba(239,68,68,0.12)', border: '#ef4444', icon: '🚨', label: 'VENCIDO' },
+            'hoje':    { bg: 'rgba(239,68,68,0.10)', border: '#f97316', icon: '⚠️', label: 'VENCE HOJE' },
+            'proximo': { bg: 'rgba(251,191,36,0.10)', border: '#fbbf24', icon: '🔔', label: 'VENCE EM BREVE' }
+        };
+        const c = colors[s];
+
+        const item = document.createElement('div');
+        item.style.cssText = `
+            background: ${c.bg};
+            border: 1px solid ${c.border};
+            border-left: 4px solid ${c.border};
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: pulseAlert 2s ease-in-out infinite;
+        `;
+        item.innerHTML = `
+            <span style="font-size:20px;">${c.icon}</span>
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:10px; font-weight:900; color:${c.border}; letter-spacing:0.08em;">${c.label}</div>
+                <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n.nome}</div>
+                <div style="font-size:11px; color:var(--t3);">Vencimento: ${dataFmt} • R$ ${(n.total / n.parcelas).toFixed(2)}/parcela</div>
+            </div>
+        `;
+        banner.appendChild(item);
+
+        // Notificação push (só uma vez por sessão por nota)
+        const notifKey = `notif_sent_${n.id}_${n.dataVenc}`;
+        if (!sessionStorage.getItem(notifKey)) {
+            const msgs = {
+                'vencido': [`FinNotes — CONTA VENCIDA`, `"${n.nome}" venceu em ${dataFmt}. Regularize agora!`],
+                'hoje':    [`FinNotes — VENCE HOJE`, `"${n.nome}" vence hoje (${dataFmt}). Não esqueça!`],
+                'proximo': [`FinNotes — Lembrete`, `"${n.nome}" vence em ${dataFmt}. Faltam poucos dias!`]
+            };
+            sendNotif(msgs[s][0], msgs[s][1]);
+            sessionStorage.setItem(notifKey, '1');
+        }
+    });
+}
+
 const CAT_COLORS = {
     'Infraestrutura': '#34d399',
     'Hardware':       '#f97316',
@@ -177,14 +275,19 @@ function render() {
     notes.forEach(n => {
         soma += n.total;
         const isDone = n.pagas === n.parcelas;
-        const color = CAT_COLORS[n.cat] || '#3b82f6';
+        const alertStatus = getAlertStatus(n);
+        const color = isDone ? 'var(--ok)' : (alertStatus === 'vencido' ? '#ef4444' : alertStatus === 'hoje' ? '#f97316' : (CAT_COLORS[n.cat] || '#3b82f6'));
         const valorParcela = (n.total / n.parcelas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         // Data de vencimento
         let dataDisplay = '';
+        let dataColor = 'var(--t3)';
         if (n.dataVenc) {
             const [ano, mes, dia] = n.dataVenc.split('-');
             dataDisplay = `• PAGAR: ${dia}/${mes}/${ano}`;
+            if (alertStatus === 'vencido') { dataDisplay = `• ⚠ VENCIDO ${dia}/${mes}`; dataColor = '#ef4444'; }
+            else if (alertStatus === 'hoje') { dataDisplay = `• ⚠ VENCE HOJE`; dataColor = '#f97316'; }
+            else if (alertStatus === 'proximo') { dataDisplay = `• 🔔 VENCE ${dia}/${mes}`; dataColor = '#fbbf24'; }
         } else {
             const dataRef = new Date();
             dataRef.setMonth(dataRef.getMonth() + (n.pagas + 1));
@@ -199,13 +302,18 @@ function render() {
             ? `<span style="color:var(--t3); font-size:11px;">Orig: ${n.valorOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} → </span>`
             : '';
 
+        // Borda pulsante para alertas
+        const alertBorder = alertStatus && !isDone
+            ? `box-shadow: 0 0 0 2px ${alertStatus === 'vencido' ? '#ef4444' : alertStatus === 'hoje' ? '#f97316' : '#fbbf24'};`
+            : '';
+
         container.innerHTML = `
-            <div class="card ${isDone ? 'completed' : ''}" style="--color:${isDone ? 'var(--ok)' : color}">
+            <div class="card ${isDone ? 'completed' : ''} ${alertStatus && !isDone ? 'card-alert' : ''}" style="--color:${color}; ${alertBorder}">
                 <div class="btn-del-fixo" data-action="delete">APAGAR</div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div style="flex:1; min-width:0; padding-right:8px;">
                         <b style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n.nome}</b>
-                        <small style="color:var(--t3);">PARCELA ${n.pagas}/${n.parcelas} ${dataDisplay}</small>
+                        <small style="color:${dataColor}; font-weight:${alertStatus ? '700' : '400'};">PARCELA ${n.pagas}/${n.parcelas} ${dataDisplay}</small>
                     </div>
                     <div style="text-align:right; flex-shrink:0; margin-right:70px;">
                         <div>${valorOriginalHTML}<b>R$ ${n.total.toFixed(2)}</b></div>
@@ -289,6 +397,7 @@ function render() {
     });
 
     document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    checkAlerts();
 }
 
 if (localStorage.getItem('finnotes_v12_data')) render();
