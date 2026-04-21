@@ -29,6 +29,44 @@ async function installApp() {
     }
 }
 
+// ─── INDEXEDDB: persiste notas para o Service Worker ler em background ────────
+function saveNotesToIDB(notes) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('finnotes_db', 1);
+    req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(notes, 'notes');
+      tx.oncomplete = () => resolve();
+    };
+    req.onerror = () => resolve(); // falha silenciosa
+  });
+}
+
+// Envia as notas para o SW checar alertas agora
+async function notifySwToCheck(notes) {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.ready;
+  if (reg.active) {
+    reg.active.postMessage({ type: 'CHECK_ALERTS', notes });
+  }
+}
+
+// Registra Periodic Background Sync (funciona no Android Chrome com PWA instalado)
+async function registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('finnotes-check', { minInterval: 12 * 60 * 60 * 1000 }); // a cada 12h
+      }
+    }
+  } catch (e) { /* não suportado, ignora */ }
+}
+
 // 3. Sistema Base
 const K_ENC = "MjU4NDU2"; 
 let notes = JSON.parse(localStorage.getItem('finnotes_v12_data') || '[]');
@@ -46,7 +84,11 @@ function unlockApp() {
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     sessionStorage.setItem('finnotes_unlocked', '1');
+    saveNotesToIDB(notes);
+    registerPeriodicSync();
     render();
+    // Checar alertas via SW logo ao abrir
+    setTimeout(() => notifySwToCheck(notes), 1500);
 }
 
 function checkLogin() {
@@ -171,7 +213,9 @@ function validateAuth() {
 }
 
 function sync() { 
-    localStorage.setItem('finnotes_v12_data', JSON.stringify(notes)); 
+    localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
+    saveNotesToIDB(notes);
+    notifySwToCheck(notes);
     render(); 
 }
 
