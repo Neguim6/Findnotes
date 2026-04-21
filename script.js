@@ -1,7 +1,16 @@
 'use strict';
 
-const NUBANK_RATE = 0.035; // 3,5% ao mês
 const STORAGE_KEY = 'finnotes_v4_data';
+const MASTER_PASSWORD = "258456";
+
+// Simulação de "API" de Juros Realista
+// Em um cenário real, você faria um fetch() aqui.
+const InterestAPI = {
+    async getRate() {
+        return 0.035; // 3,5% - Taxa Nubank simulada
+    }
+};
+
 const CATS = {
     'Alimentação': { icon: '🍽', color: '#f97316', bg: '#431407' },
     'Saúde': { icon: '💊', color: '#22d3ee', bg: '#083344' },
@@ -11,6 +20,13 @@ const CATS = {
 };
 
 let notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let currentRate = 0.035;
+
+// Inicializa a "API"
+InterestAPI.getRate().then(rate => {
+    currentRate = rate;
+    console.log(`[API] Taxa de juros sincronizada: ${(rate * 100).toFixed(1)}%`);
+});
 
 function toggleModal(show) {
     const modal = document.getElementById('modal');
@@ -21,7 +37,7 @@ function toggleModal(show) {
 function calcJuros() {
     const v = parseFloat(document.getElementById('in-valor').value) || 0;
     const p = parseInt(document.getElementById('in-parcelas').value);
-    const total = p === 1 ? v : v * (1 + (NUBANK_RATE * p));
+    const total = p === 1 ? v : v * (1 + (currentRate * p));
     document.getElementById('in-total').value = total.toFixed(2);
 }
 
@@ -36,22 +52,37 @@ function saveNote() {
     notes.unshift({ id: Date.now(), nome, valorJuros, parcelas, categoria, pagas: 0 });
     update();
     toggleModal(false);
-    
+    resetForm();
+}
+
+function resetForm() {
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor').value = '';
     document.getElementById('in-total').value = '';
 }
 
-function toggleParcela(id) {
-    notes = notes.map(n => {
-        if (n.id === id) n.pagas = n.pagas < n.parcelas ? n.pagas + 1 : 0;
-        return n;
-    });
-    update();
+// FUNÇÃO COM SENHA E LOG
+function handlePayment(id) {
+    const pass = prompt("Confirme a senha para registrar pagamento:");
+    
+    if (pass === MASTER_PASSWORD) {
+        notes = notes.map(n => {
+            if (n.id === id) {
+                n.pagas = n.pagas < n.parcelas ? n.pagas + 1 : 0;
+                console.log(`[LOG] Pagamento confirmado para: ${n.nome} | Parcela: ${n.pagas}/${n.parcelas}`);
+                alert(`Sucesso! Pagamento de ${n.nome} registrado.`);
+            }
+            return n;
+        });
+        update();
+    } else if (pass !== null) {
+        alert("Senha incorreta! Operação cancelada.");
+        console.warn(`[LOG] Tentativa de pagamento negada - Senha inválida.`);
+    }
 }
 
 function deleteNote(id) {
-    if(confirm("Excluir este item?")) {
+    if(confirm("Excluir permanentemente?")) {
         notes = notes.filter(n => n.id !== id);
         update();
     }
@@ -79,7 +110,7 @@ function render() {
         const container = document.createElement('div');
         container.className = 'card-container';
         container.innerHTML = `
-            <div class="delete-btn" onclick="deleteNote(${n.id})">APAGAR</div>
+            <div class="delete-btn" onclick="deleteNote(${n.id})">REMOVER</div>
             <div class="card ${estaPago ? 'is-paid' : ''}" id="card-${n.id}" style="--color: ${estaPago ? 'var(--ok)' : cat.color}">
                 <div style="display:flex; justify-content:space-between; align-items:start;">
                     <div style="flex:1">
@@ -98,32 +129,31 @@ function render() {
         const cardEl = container.querySelector('.card');
         let startX = 0;
 
-        // Lógica de Deslizar (Mobile)
+        // Swipe e Clique
         cardEl.addEventListener('touchstart', e => { startX = e.touches[0].clientX; cardEl.style.transition = 'none'; }, {passive: true});
         cardEl.addEventListener('touchmove', e => {
             let diff = startX - e.touches[0].clientX;
             if (diff > 0) cardEl.style.transform = `translateX(-${Math.min(diff, 100)}px)`;
         }, {passive: true});
+        
         cardEl.addEventListener('touchend', e => {
-            cardEl.style.transition = 'transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+            cardEl.style.transition = 'transform 0.3s ease';
             let diff = startX - e.changedTouches[0].clientX;
             if (diff > 60) {
                 cardEl.style.transform = 'translateX(-80px)';
             } else {
                 cardEl.style.transform = 'translateX(0)';
-                if (Math.abs(diff) < 5) toggleParcela(n.id); // Trata como clique se não deslizou
+                if (Math.abs(diff) < 5) handlePayment(n.id);
             }
         });
 
-        // Clique para desktop
-        cardEl.addEventListener('click', (e) => {
-            if (window.innerWidth > 768) toggleParcela(n.id);
+        cardEl.addEventListener('click', () => {
+            if (window.innerWidth > 768) handlePayment(n.id);
         });
 
         list.appendChild(container);
     });
 
-    // Atualiza Dashboard
     document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.getElementById('label-pagas').innerText = `Pagas: ${somaPaga.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
     const pct = somaTotal > 0 ? (somaPaga / somaTotal * 100) : 0;
