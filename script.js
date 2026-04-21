@@ -1,50 +1,22 @@
 'use strict';
 
-// 258456 -> MjU4NDU2
-// solosagradot@gmail.com -> c29sb3NhZ3JhZG90QGdtYWlsLmNvbQ==
+// Senha Master Criptografada (258456 -> MjU4NDU2)
 const K_ENC = "MjU4NDU2"; 
-const M_ENC = "c29sb3NhZ3JhZG90QGdtYWlsLmNvbQ=="; 
 
-let notes = JSON.parse(localStorage.getItem('finnotes_v8_data') || '[]');
+let notes = JSON.parse(localStorage.getItem('finnotes_v85_data') || '[]');
 let pendingAction = { id: null, type: null };
 
 const getK = () => atob(K_ENC);
-const getM = () => atob(M_ENC);
-
-// DISPARO DE E-MAIL (Web3Forms - Mais robusto)
-async function enviarNotificacao(item, atual) {
-    const payload = {
-        access_key: "05260126-7788-449e-b91d-6e792c3066a5", // Chave pública de teste
-        subject: `FINNOTES: Pagamento de ${item.nome}`,
-        from_name: "Sistema FinNotes",
-        to_email: getM(),
-        message: `
-            Item: ${item.nome}
-            Parcela: ${atual} de ${item.parcelas}
-            Valor Final: R$ ${item.total.toFixed(2)}
-            Data: ${new Date().toLocaleString('pt-BR')}
-        `
-    };
-
-    try {
-        await fetch("https://api.web3forms.com/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify(payload)
-        });
-        addLog("Notificação de segurança enviada ao admin.");
-    } catch (e) {
-        addLog("Falha na rota de e-mail.");
-    }
-}
 
 function checkLogin() {
     if(document.getElementById('main-login-pwd').value === getK()) {
         document.getElementById('lock-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
+        addLog("Sessão iniciada localmente.");
         render();
     } else {
         alert("ACESSO NEGADO");
+        document.getElementById('main-login-pwd').value = '';
     }
 }
 
@@ -57,6 +29,7 @@ function openModal(id) {
     document.getElementById(id).classList.add('active'); 
     if(id === 'modal-pwd') setTimeout(() => document.getElementById('confirm-pwd').focus(), 150);
 }
+
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 function addLog(msg) {
@@ -72,7 +45,8 @@ function analisarPorcentagem() {
     const v2 = parseFloat(document.getElementById('in-valor2').value) || 0;
     const label = document.getElementById('label-percent');
     if (v1 > 0 && v2 >= v1) {
-        label.textContent = `Taxa: ${(((v2 - v1) / v1) * 100).toFixed(2)}%`;
+        const taxa = (((v2 - v1) / v1) * 100).toFixed(2);
+        label.textContent = `Taxa Detectada: ${taxa}%`;
     } else { label.textContent = "Taxa: 0.00%"; }
 }
 
@@ -81,10 +55,18 @@ function saveNote() {
     const total = parseFloat(document.getElementById('in-valor2').value);
     if(!nome || isNaN(total)) return;
 
-    notes.unshift({ id: Date.now(), nome, total, parcelas: parseInt(document.getElementById('in-parcelas').value), cat: document.getElementById('in-cat').value, pagas: 0 });
+    notes.unshift({ 
+        id: Date.now(), 
+        nome, 
+        total, 
+        parcelas: parseInt(document.getElementById('in-parcelas').value), 
+        cat: document.getElementById('in-cat').value, 
+        pagas: 0 
+    });
     sync();
     closeModal('modal-add');
-    addLog(`Criado: ${nome}`);
+    addLog(`Item adicionado: ${nome}`);
+    
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor1').value = '';
     document.getElementById('in-valor2').value = '';
@@ -92,9 +74,10 @@ function saveNote() {
 
 function askAuth(id, type) {
     pendingAction = { id, type };
-    document.getElementById('pwd-title').textContent = type === 'pay' ? "Confirmar Baixa" : "Confirmar Exclusão";
-    document.getElementById('pwd-confirm-btn').style.background = type === 'pay' ? "var(--ok)" : "var(--err)";
-    document.getElementById('pwd-confirm-btn').onclick = validateAuth;
+    document.getElementById('pwd-title').textContent = type === 'pay' ? "Confirmar Pagamento" : "Confirmar Exclusão";
+    const btn = document.getElementById('pwd-confirm-btn');
+    btn.style.background = type === 'pay' ? "var(--ok)" : "var(--err)";
+    btn.onclick = validateAuth;
     openModal('modal-pwd');
 }
 
@@ -104,12 +87,13 @@ function validateAuth() {
             notes = notes.map(n => {
                 if(n.id === pendingAction.id && n.pagas < n.parcelas) {
                     n.pagas += 1;
-                    enviarNotificacao(n, n.pagas);
+                    addLog(`Baixa: ${n.nome} (${n.pagas}/${n.parcelas})`);
                 }
                 return n;
             });
         } else {
             notes = notes.filter(n => n.id !== pendingAction.id);
+            addLog("Registro removido.");
         }
         sync();
         closeModal('modal-pwd');
@@ -117,18 +101,20 @@ function validateAuth() {
 }
 
 function sync() {
-    localStorage.setItem('finnotes_v8_data', JSON.stringify(notes));
+    localStorage.setItem('finnotes_v85_data', JSON.stringify(notes));
     render();
 }
 
 function render() {
     const list = document.getElementById('notes-list');
     list.innerHTML = '';
-    let soma = 0;
+    let somaTotal = 0;
+
     notes.forEach(n => {
-        soma += n.total;
+        somaTotal += n.total;
         const isDone = n.pagas === n.parcelas;
         const color = { 'Infraestrutura': '#34d399', 'Alimentação': '#f97316' }[n.cat] || '#3b82f6';
+
         const container = document.createElement('div');
         container.className = 'card-container';
         container.innerHTML = `
@@ -138,7 +124,7 @@ function render() {
                     <div>
                         <b>${n.nome} ${isDone ? '✓' : ''}</b>
                         <div style="font-size:11px; color:var(--t3); margin-top:4px;">
-                            ${isDone ? 'LIQUIDADO' : `Parcela ${n.pagas}/${n.parcelas}`}
+                            ${isDone ? 'LIQUIDADO' : `Parcelas pagas: ${n.pagas} de ${n.parcelas}`}
                         </div>
                     </div>
                     <div style="text-align:right"><b>R$ ${n.total.toFixed(2)}</b></div>
@@ -146,18 +132,19 @@ function render() {
                 <div class="progress-bg"><div class="progress-fill" style="width:${(n.pagas/n.parcelas)*100}%"></div></div>
             </div>
         `;
+
         const el = container.querySelector('.card');
-        let sX = 0;
-        el.ontouchstart = e => { sX = e.touches[0].clientX; el.style.transition = 'none'; };
+        let startX = 0;
+        el.ontouchstart = e => { startX = e.touches[0].clientX; el.style.transition = 'none'; };
         el.ontouchend = e => {
             el.style.transition = '0.3s';
-            let d = e.changedTouches[0].clientX - sX;
-            if(d > 80) { askAuth(n.id, 'delete'); }
-            else if(Math.abs(d) < 5 && !isDone) askAuth(n.id, 'pay');
+            let diff = e.changedTouches[0].clientX - startX;
+            if(diff > 80) { askAuth(n.id, 'delete'); }
+            else if(Math.abs(diff) < 5 && !isDone) askAuth(n.id, 'pay');
             el.style.transform = 'translateX(0)';
         };
         el.onclick = () => { if(window.innerWidth > 768 && !isDone) askAuth(n.id, 'pay'); };
         list.appendChild(container);
     });
-    document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
