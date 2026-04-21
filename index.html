@@ -62,6 +62,15 @@
 
         /* Swipe hint */
         .swipe-hint { font-size: 11px; color: var(--t3); text-align: center; margin-bottom: 12px; }
+
+        /* Alert pulse animation */
+        @keyframes pulseAlert {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+        .card-alert { animation: pulseAlert 2.5s ease-in-out infinite; }
+
+        #alert-banner { display: none; margin-bottom: 16px; }
     </style>
 </head>
 <body>
@@ -71,7 +80,7 @@
             <h1 style="margin-bottom: 8px; font-size: 28px;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
             <p style="color:var(--t3); font-size:13px; margin-bottom:24px;">Controle financeiro seguro</p>
             <input type="password" id="main-login-pwd" placeholder="SENHA" style="text-align: center; letter-spacing: 8px; font-size: 22px;">
-            <button onclick="checkLogin()" class="btn-primary">ACESSAR</button>
+            <button onclick="checkLogin(); requestNotifPermission();" class="btn-primary">ACESSAR</button>
         </div>
     </div>
 
@@ -89,6 +98,8 @@
         </div>
 
         <div class="swipe-hint">← Toque para pagar • Arraste direita para apagar →</div>
+
+        <div id="alert-banner"></div>
 
         <div id="notes-list"></div>
         <button class="fab" onclick="openModal('modal-add')">+</button>
