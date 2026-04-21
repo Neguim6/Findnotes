@@ -26,7 +26,7 @@ async function installApp() {
 }
 
 // --- LÓGICA DO SISTEMA ---
-const K_ENC = "MjU4NDU2"; // 258456
+const K_ENC = "MjU4NDU2"; // Senha: 258456
 let notes = JSON.parse(localStorage.getItem('finnotes_v10_data') || '[]');
 let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
@@ -37,14 +37,18 @@ function checkLogin() {
         document.getElementById('app').style.display = 'block';
         render();
     } else { 
-        alert("ACESSO NEGADO"); 
+        alert("SENHA INCORRETA"); 
         document.getElementById('main-login-pwd').value = '';
     }
 }
 
+// Popular Parcelas
 const selP = document.getElementById('in-parcelas');
-for(let i=1; i<=12; i++) { 
-    selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`; 
+if(selP) {
+    selP.innerHTML = '';
+    for(let i=1; i<=12; i++) { 
+        selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`; 
+    }
 }
 
 function openModal(id) { 
@@ -54,6 +58,7 @@ function openModal(id) {
         setTimeout(() => document.getElementById('confirm-pwd').focus(), 150);
     }
 }
+
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 function saveNote() {
@@ -114,16 +119,21 @@ function render() {
         const isDone = n.pagas === n.parcelas;
         const color = { 'Infraestrutura': '#34d399', 'Hardware': '#f97316', 'Serviços': '#ac94f1' }[n.cat] || '#3b82f6';
         
+        // Lógica de Data Subsequente: Mês atual + (parcelas pagas + 1)
+        const dataRef = new Date();
+        dataRef.setMonth(dataRef.getMonth() + (n.pagas + 1));
+        const mesVenc = dataRef.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase();
+
         const container = document.createElement('div');
         container.className = 'card-container';
         container.innerHTML = `
-            <div class="card ${isDone ? 'completed' : ''}" style="--color:${isDone ? 'var(--ok)' : color}">
+            <div class="card ${isDone ? 'completed' : ''}" id="card-${n.id}" style="--color:${isDone ? 'var(--ok)' : color}">
                 <div class="btn-del-fixo" onclick="event.stopPropagation(); askAuth(${n.id}, 'delete')">APAGAR</div>
                 <div style="display:flex; justify-content:space-between">
                     <div>
                         <b style="font-size:16px">${n.nome}</b><br>
                         <span style="font-size:11px; color:var(--t3); font-weight:bold">
-                            ${isDone ? 'TOTALMENTE PAGO ✓' : `PARCELA ${n.pagas}/${n.parcelas}`}
+                            ${isDone ? 'LIQUIDADO ✓' : `PARCELA ${n.pagas}/${n.parcelas} • VENC: ${mesVenc}`}
                         </span>
                     </div>
                     <div style="text-align:right; margin-right:20px;">
@@ -133,15 +143,52 @@ function render() {
                 <div class="progress-bg"><div class="progress-fill" style="width:${(n.pagas/n.parcelas)*100}%"></div></div>
             </div>`;
         
-        container.querySelector('.card').onclick = () => { if(!isDone) askAuth(n.id, 'pay'); };
+        const el = container.querySelector('.card');
+
+        // GESTO MOBILE: Deslizar para a direita para apagar
+        let startX = 0;
+        el.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            el.style.transition = 'none';
+        }, {passive: true});
+
+        el.addEventListener('touchmove', e => {
+            let moveX = e.touches[0].clientX - startX;
+            if (moveX > 0) { 
+                el.style.transform = `translateX(${moveX}px)`;
+                if (moveX > 100) el.style.filter = 'brightness(0.7)';
+            }
+        }, {passive: true});
+
+        el.addEventListener('touchend', e => {
+            el.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            let finalX = e.changedTouches[0].clientX - startX;
+            
+            if (finalX > 150) { 
+                el.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    askAuth(n.id, 'delete');
+                    el.style.transform = 'translateX(0)';
+                    el.style.filter = 'none';
+                }, 200);
+            } else {
+                el.style.transform = 'translateX(0)';
+                el.style.filter = 'none';
+                // Se for apenas um toque (clique)
+                if (Math.abs(finalX) < 5 && !isDone) askAuth(n.id, 'pay');
+            }
+        });
+
+        // Clique para Desktop
+        el.onclick = () => {
+            if (window.innerWidth > 1024 && !isDone) askAuth(n.id, 'pay');
+        };
+
         list.appendChild(container);
     });
     
     document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const progGeral = document.getElementById('total-progress');
-    // Lógica simples de preenchimento da barra geral (ex: 75% fixo ou baseada em metas)
-    progGeral.style.width = soma > 0 ? '100%' : '0%';
 }
 
-// Inicia o render
+// Inicialização
 if(localStorage.getItem('finnotes_v10_data')) render();
