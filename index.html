@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>FinNotes v5.1</title>
+    <title>FinNotes v5.3 - Ultra</title>
     <link rel="manifest" href="manifest.json" />
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,49 +22,28 @@
         .dashboard { background: var(--z2); padding: 20px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
         .total-valor { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; color: var(--t1); }
 
-        /* Container do Card (Mobile Swipe) */
         .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); background: var(--err); }
         .delete-btn-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; z-index: 1; }
 
         .card { 
-            background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); 
-            padding: 18px; /* Padding padrão mobile */
-            position: relative; z-index: 2; transition: transform 0.3s ease; cursor: pointer;
+            background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; 
+            position: relative; z-index: 2; transition: all 0.3s ease; cursor: pointer;
         }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
 
-        /* CORREÇÃO DO PROBLEMA DO COMPUTADOR */
-        .pc-delete { display: none; } /* Escondido no mobile */
+        /* Estilo para item FINALIZADO (Riscado) */
+        .card.completed { opacity: 0.5; background: #111b14; border-color: var(--ok); }
+        .card.completed b { text-decoration: line-through; color: var(--t3); }
+        .card.completed .progress-fill { background: var(--ok) !important; }
 
         @media (min-width: 768px) { 
-            .card {
-                /* Aumenta o padding da direita no PC para dar espaço ao botão fixo */
-                padding-right: 90px !important; 
-            }
+            .card { padding-right: 90px !important; }
             .pc-delete { 
-                display: block; /* Mostra no PC */
-                position: absolute; 
-                right: 15px; /* Alinhado ao canto direito interno */
-                top: 50%; /* Centralizado verticalmente */
-                transform: translateY(-50%); /* Ajuste de centralização */
-                background: #ef444420; 
-                color: #ef4444; 
-                border: 1px solid #ef444440; 
-                padding: 6px 12px; 
-                border-radius: 6px; 
-                font-size: 10px; 
-                font-weight: bold; 
-                cursor: pointer; 
-                transition: 0.2s;
-                z-index: 10; /* Garante que fique acima de tudo */
-            }
-            .pc-delete:hover {
-                background: var(--err);
-                color: white;
+                display: block; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+                background: #ef444420; color: #ef4444; border: 1px solid #ef444440; 
+                padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; z-index: 10;
             }
         }
-
-        /* Fim da correção */
 
         .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
@@ -74,6 +52,7 @@
         .modal.active { display: flex; }
 
         input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 14px; margin-top: 10px; outline: none; font-size: 16px; }
+        .juros-info { font-size: 12px; color: var(--ac); margin-top: 8px; font-weight: bold; display: block; }
 
         .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 32px; z-index: 100; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
 
@@ -85,8 +64,8 @@
 
     <div id="app">
         <header style="text-align: center; margin-bottom: 25px;">
-            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v5.1</span></h1>
-            <p style="font-size: 10px; color: var(--t3);">SECURE STORAGE SYSTEM (VIRTUAL /TEMP)</p>
+            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v5.3</span></h1>
+            <p style="font-size: 10px; color: var(--t3);">SISTEMA DE CONTROLE DE INFRAESTRUTURA</p>
         </header>
 
         <div class="dashboard">
@@ -98,7 +77,7 @@
         <div id="notes-list"></div>
 
         <div id="log-area">
-            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">HISTÓRICO DE ARQUIVOS (IndexedDB)</h4>
+            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">LOG DE OPERAÇÕES (/TEMP)</h4>
             <div id="logs"></div>
         </div>
 
@@ -106,29 +85,29 @@
     </div>
 
     <div class="modal" id="modal-add">
-        <div class="dashboard" style="width: 100%; max-width: 400px; margin: 0;">
-            <h3>Gravar Registro</h3>
-            <input type="text" id="in-nome" placeholder="Descrição do Arquivo">
+        <div class="dashboard" style="width: 100%; max-width: 400px; margin:0;">
+            <h3>Novo Registro</h3>
+            <input type="text" id="in-nome" placeholder="Nome do Item">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="number" id="in-valor" placeholder="Valor Base" oninput="calcJuros()">
+                <input type="number" id="in-valor" placeholder="Valor Base (1)" oninput="calcJuros()">
                 <select id="in-parcelas" onchange="calcJuros()"></select>
             </div>
-            <input type="number" id="in-total" step="0.01" style="margin-top:15px; border-color: var(--ac);">
-            <select id="in-cat" style="margin-top:15px;">
+            <input type="number" id="in-total" placeholder="Valor c/ Juros (2)" step="0.01" style="border-color: var(--ac);">
+            <span id="label-juros" class="juros-info">Juros: R$ 0,00</span>
+            
+            <select id="in-cat" style="margin-top:10px;">
                 <option value="Infraestrutura">🏠 Infraestrutura</option>
                 <option value="Alimentação">🍽 Alimentação</option>
-                <option value="Saúde">💊 Saúde</option>
-                <option value="Lazer">🎮 Lazer</option>
                 <option value="Outros">📦 Outros</option>
             </select>
-            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:20px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold; cursor: pointer;">SALVAR NA MEMÓRIA VIRTUAL</button>
+            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:15px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold; cursor: pointer;">GRAVAR</button>
             <button onclick="closeModal('modal-add')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:10px; cursor: pointer;">Cancelar</button>
         </div>
     </div>
 
     <div class="modal" id="modal-pwd">
         <div class="dashboard" style="width: 100%; max-width: 320px; text-align: center; margin: 0;">
-            <h3 id="pwd-title">Confirmar Ação</h3>
+            <h3 id="pwd-title">Confirmar</h3>
             <p id="pwd-desc" style="font-size: 12px; color: var(--t3); margin: 10px 0 20px;"></p>
             <input type="password" id="confirm-pwd" placeholder="••••••" style="text-align: center; font-size: 28px; letter-spacing: 6px;">
             <button id="pwd-confirm-btn" style="width: 100%; padding: 15px; margin-top: 20px; background: var(--ok); border:none; border-radius: 12px; color:white; font-weight: 800; cursor: pointer;">AUTENTICAR</button>
@@ -137,11 +116,5 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        // Registrar sw.js para permitir instalação como App
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
-    </script>
 </body>
 </html>
