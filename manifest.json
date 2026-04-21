@@ -1,6 +1,6 @@
 {
-  "name": "FinNotes Pro Ultra",
-  "short_name": "FinNotes",
+  "name": "FinNotes Secure Ultra",
+  "short_name": "FinNotes Pro",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#09090b",
