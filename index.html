@@ -14,7 +14,7 @@
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
             --z4: #27272a; --z5: #3f3f46; --z6: #52525b;
             --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a;
-            --ac: #3b82f6; --ac2: #60a5fa; --ac-a: #3b82f614;
+            --ac: #3b82f6; --ac-a: #3b82f614;
             --ok: #22c55e; --ok-a: #22c55e18;
             --r: 14px; --r2: 20px;
             --ff: 'Geist', system-ui, -apple-system, sans-serif;
@@ -23,24 +23,23 @@
         body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 20px; display: flex; justify-content: center; -webkit-font-smoothing: antialiased; }
         #app { width: 100%; max-width: 480px; padding-bottom: 100px; }
 
-        /* Dashboard */
         .dashboard { background: var(--z2); padding: 24px; border-radius: var(--r2); border: 1px solid var(--z3); margin-bottom: 20px; animation: fadeUp 0.4s ease; }
         .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-        /* Cards */
-        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; margin-bottom: 12px; position: relative; overflow: hidden; animation: fadeUp 0.3s ease forwards; transition: transform 0.1s; }
+        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; margin-bottom: 12px; position: relative; overflow: hidden; animation: fadeUp 0.3s ease forwards; transition: all 0.2s; cursor: pointer; }
         .card:active { transform: scale(0.98); }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
         
-        /* Badges */
+        /* Estilo para quando estiver pago */
+        .card.is-paid { border-color: var(--ok-a); background: #111b14; }
+        .paid-stamp { font-size: 10px; font-weight: 900; color: var(--ok); border: 1px solid var(--ok); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 8px; }
+
         .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--color); border: 1px solid rgba(255,255,255,0.05); text-transform: uppercase; }
 
-        /* Inputs */
-        input, select, textarea { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; outline: none; font-size: 15px; transition: 0.2s; }
+        input, select { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; outline: none; font-size: 15px; transition: 0.2s; }
         input:focus { border-color: var(--ac); box-shadow: 0 0 0 3px var(--ac-a); }
 
-        /* Botão Instalar */
         #install-btn { display: none; width: 100%; background: var(--ok-a); color: var(--ok); border: 1px solid #22c55e40; padding: 14px; border-radius: 12px; margin-bottom: 20px; font-weight: 700; cursor: pointer; text-align: center; }
 
         .fab { position: fixed; bottom: 30px; right: 20px; width: 56px; height: 56px; background: var(--ac); color: white; border-radius: 18px; border: none; font-size: 28px; font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 100; cursor: pointer; }
@@ -57,11 +56,11 @@
         <header style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h1 style="font-size: 26px; font-weight: 800; letter-spacing: -1px;">Fin<span style="color:var(--ac)">Notes</span></h1>
-                <p style="color:var(--t3); font-size: 12px;">Technical Control v4.0</p>
+                <p style="color:var(--t3); font-size: 12px;">Technical Control v4.3</p>
             </div>
         </header>
 
-        <button id="install-btn">📲 INSTALAR APP NO CELULAR</button>
+        <button id="install-btn">📲 INSTALAR FINNOTES NO CELULAR</button>
 
         <div class="dashboard">
             <div style="font-size: 11px; color: var(--t3); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Comprometido Total</div>
@@ -83,7 +82,7 @@
             <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 800;">Nova Anotação</h2>
             
             <label style="font-size: 11px; font-weight: 700; color: var(--t3);">DESCRIÇÃO</label>
-            <input type="text" id="in-nome" placeholder="Ex: Upgrade SSD Hospital">
+            <input type="text" id="in-nome" placeholder="Ex: Equipamento Servidor">
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
                 <div>
@@ -105,8 +104,8 @@
             </div>
 
             <div style="margin-top: 15px;">
-                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">TOTAL ESTIMADO (+2% AM)</label>
-                <input type="number" id="in-total" readonly style="background: var(--z1); border-style: dashed; opacity: 0.8;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">VALOR TOTAL (EDITÁVEL)</label>
+                <input type="number" id="in-total" step="0.01" placeholder="0.00">
             </div>
 
             <div style="margin-top: 15px;">
