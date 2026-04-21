@@ -6,35 +6,34 @@
     <meta name="theme-color" content="#09090b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>FinNotes Ultra</title>
+    <title>FinNotes v4.5</title>
     <link rel="manifest" href="manifest.json" />
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
-            --z4: #27272a; --z5: #3f3f46; --z6: #52525b;
-            --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a;
-            --ac: #3b82f6; --ac-a: #3b82f614;
-            --ok: #22c55e; --ok-a: #22c55e18;
-            --err: #ef4444;
-            --r: 14px; --r2: 20px;
-            --ff: 'Geist', system-ui, -apple-system, sans-serif;
+            --z4: #27272a; --z5: #3f3f46; --t1: #fafafa; --t2: #a1a1aa; 
+            --t3: #71717a; --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
+            --r: 14px; --r2: 20px; --ff: 'Geist', system-ui, sans-serif;
         }
 
-        body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 15px; display: flex; justify-content: center; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-        #app { width: 100%; max-width: 600px; padding-bottom: 100px; position: relative; }
+        body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 15px; display: flex; justify-content: center; overflow-x: hidden; }
+        #app { width: 100%; max-width: 500px; padding-bottom: 100px; }
 
-        .dashboard { background: var(--z2); padding: clamp(15px, 5vw, 24px); border-radius: var(--r2); border: 1px solid var(--z3); margin-bottom: 20px; }
-        .total-valor { font-size: clamp(24px, 8vw, 34px); font-weight: 800; margin: 6px 0; letter-spacing: -1px; }
+        .dashboard { background: var(--z2); padding: 24px; border-radius: var(--r2); border: 1px solid var(--z3); margin-bottom: 20px; }
+        .total-valor { font-size: 32px; font-weight: 800; margin: 6px 0; letter-spacing: -1px; }
 
-        /* Container do Card para o Swipe */
-        .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); }
-        
-        .delete-action { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; background: var(--err); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border-radius: 0 var(--r) var(--r) 0; cursor: pointer; }
+        /* Container do Swipe */
+        .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); background: var(--err); }
+        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; cursor: pointer; z-index: 1; }
 
-        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; position: relative; z-index: 2; transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28); cursor: pointer; touch-action: pan-y; }
+        .card { 
+            background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; 
+            position: relative; z-index: 2; transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); 
+            cursor: pointer; touch-action: pan-y; 
+        }
+        .card.is-paid { border-color: #22c55e30; background: #111b14; }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
-        .card.is-paid { border-color: var(--ok-a); background: #111b14; }
 
         .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
@@ -42,31 +41,30 @@
         .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--color); text-transform: uppercase; }
         .paid-stamp { font-size: 10px; font-weight: 900; color: var(--ok); border: 1px solid var(--ok); padding: 2px 6px; border-radius: 4px; }
 
-        input, select { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; outline: none; font-size: 15px; }
+        input, select { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; font-size: 15px; outline: none; }
         input:focus { border-color: var(--ac); }
 
-        #install-btn { display: none; width: 100%; background: var(--ok-a); color: var(--ok); border: 1px solid #22c55e40; padding: 14px; border-radius: 12px; margin-bottom: 20px; font-weight: 700; cursor: pointer; }
+        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 30px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); z-index: 1000; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; padding: 15px; z-index: 9999; backdrop-filter: blur(10px); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 200; backdrop-filter: blur(10px); }
         .modal.active { display: flex; }
 
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (min-width: 768px) {
+            .delete-btn { width: 60px; font-size: 10px; opacity: 0.5; transition: opacity 0.2s; }
+            .card-container:hover .delete-btn { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
     <div id="app">
         <header style="margin-bottom: 25px; text-align: center;">
-            <h1 style="font-size: 28px; font-weight: 800;">Fin<span style="color:var(--ac)">Notes</span></h1>
-            <p style="color:var(--t3); font-size: 11px; letter-spacing: 1px;">SISTEMA DE CONTROLE v4.5</p>
+            <h1 style="font-size: 24px; font-weight: 800;">Fin<span style="color:var(--ac)">Notes</span></h1>
+            <p style="color:var(--t3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase;">Infrastructure Specialist Edition</p>
         </header>
 
-        <button id="install-btn">📲 INSTALAR NO TELEMÓVEL</button>
-
         <div class="dashboard">
-            <div style="font-size: 11px; color: var(--t3); text-transform: uppercase; font-weight: 700;">Comprometido Total</div>
+            <div style="font-size: 11px; color: var(--t3); text-transform: uppercase; font-weight: 700;">Total Comprometido</div>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--t3);">
                 <span id="label-pagas">Pagas: R$ 0</span>
@@ -77,15 +75,15 @@
 
         <div id="notes-list"></div>
 
-        <button class="fab" onclick="toggleModal(true)">+</button>
+        <button class="fab" id="openModalBtn" onclick="toggleModal(true)">+</button>
     </div>
 
     <div class="modal" id="modal">
-        <div class="dashboard" style="width: 100%; max-width: 450px;">
-            <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 800;">Novo Lançamento</h2>
+        <div class="dashboard" style="width: 100%; max-width: 400px; margin-bottom: 0;">
+            <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 800;">Novo Registro</h2>
             
-            <label style="font-size: 11px; font-weight: 700; color: var(--t3);">ITEM / SERVIÇO</label>
-            <input type="text" id="in-nome" placeholder="Ex: Upgrade SSD">
+            <label style="font-size: 11px; font-weight: 700; color: var(--t3);">NOME DO ITEM</label>
+            <input type="text" id="in-nome" placeholder="Ex: Equipamento TI">
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
                 <div>
@@ -107,7 +105,7 @@
             </div>
 
             <div style="margin-top: 15px;">
-                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">VALOR TOTAL (NUBANK ~3,5%)</label>
+                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">VALOR TOTAL (Nubank 3,5%)</label>
                 <input type="number" id="in-total" step="0.01" style="background: var(--z1); border-color: var(--ac);">
             </div>
 
@@ -123,8 +121,8 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 25px;">
-                <button onclick="toggleModal(false)" style="flex:1; padding:14px; background:transparent; border:1px solid var(--z5); color:var(--t2); border-radius:12px; font-weight:bold; cursor:pointer;">Sair</button>
-                <button onclick="saveNote()" style="flex:1; padding:14px; background:var(--ac); border:none; color:white; border-radius:12px; font-weight:bold; cursor:pointer;">Gravar</button>
+                <button onclick="toggleModal(false)" style="flex:1; padding:14px; background:transparent; border:1px solid var(--z5); color:var(--t2); border-radius:12px; font-weight:bold;">Sair</button>
+                <button onclick="saveNote()" style="flex:1; padding:14px; background:var(--ac); border:none; color:white; border-radius:12px; font-weight:bold;">Salvar</button>
             </div>
         </div>
     </div>
