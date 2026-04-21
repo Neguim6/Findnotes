@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>FinNotes v5.3 - Ultra</title>
+    <title>FinNotes v5.4 - Auditor</title>
     <link rel="manifest" href="manifest.json" />
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,10 +31,9 @@
         }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
 
-        /* Estilo para item FINALIZADO (Riscado) */
-        .card.completed { opacity: 0.5; background: #111b14; border-color: var(--ok); }
+        /* Estilo Concluído */
+        .card.completed { opacity: 0.4; background: #0f1711; border-color: var(--ok); }
         .card.completed b { text-decoration: line-through; color: var(--t3); }
-        .card.completed .progress-fill { background: var(--ok) !important; }
 
         @media (min-width: 768px) { 
             .card { padding-right: 90px !important; }
@@ -48,13 +47,13 @@
         .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(10px); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.96); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(12px); }
         .modal.active { display: flex; }
 
         input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 14px; margin-top: 10px; outline: none; font-size: 16px; }
-        .juros-info { font-size: 12px; color: var(--ac); margin-top: 8px; font-weight: bold; display: block; }
+        .percent-badge { font-size: 11px; color: var(--ac); background: #3b82f615; padding: 4px 8px; border-radius: 4px; margin-top: 8px; display: inline-block; font-weight: bold; border: 1px solid #3b82f630; }
 
-        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 32px; z-index: 100; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 32px; z-index: 100; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 
         #log-area { margin-top: 40px; border-top: 1px solid var(--z3); padding-top: 20px; }
         .log-entry { font-size: 10px; color: var(--t3); padding: 5px 0; border-bottom: 1px solid #18181b; font-family: monospace; }
@@ -64,12 +63,12 @@
 
     <div id="app">
         <header style="text-align: center; margin-bottom: 25px;">
-            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v5.3</span></h1>
-            <p style="font-size: 10px; color: var(--t3);">SISTEMA DE CONTROLE DE INFRAESTRUTURA</p>
+            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v5.4</span></h1>
+            <p style="font-size: 10px; color: var(--t3); letter-spacing: 1px;">AUDITOR DE INFRAESTRUTURA</p>
         </header>
 
         <div class="dashboard">
-            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Comprometido Total</span>
+            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Total Acumulado</span>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div class="progress-bg"><div id="total-progress" class="progress-fill"></div></div>
         </div>
@@ -77,7 +76,7 @@
         <div id="notes-list"></div>
 
         <div id="log-area">
-            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">LOG DE OPERAÇÕES (/TEMP)</h4>
+            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">HISTÓRICO /TEMP/SYSTEM.LOG</h4>
             <div id="logs"></div>
         </div>
 
@@ -87,20 +86,23 @@
     <div class="modal" id="modal-add">
         <div class="dashboard" style="width: 100%; max-width: 400px; margin:0;">
             <h3>Novo Registro</h3>
-            <input type="text" id="in-nome" placeholder="Nome do Item">
+            <input type="text" id="in-nome" placeholder="Descrição do Item">
+            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="number" id="in-valor" placeholder="Valor Base (1)" oninput="calcJuros()">
-                <select id="in-parcelas" onchange="calcJuros()"></select>
+                <input type="number" id="in-valor1" placeholder="Valor 1 (Original)" oninput="analisarPorcentagem()">
+                <select id="in-parcelas"></select>
             </div>
-            <input type="number" id="in-total" placeholder="Valor c/ Juros (2)" step="0.01" style="border-color: var(--ac);">
-            <span id="label-juros" class="juros-info">Juros: R$ 0,00</span>
+
+            <input type="number" id="in-valor2" placeholder="Valor 2 (Com Juros)" step="0.01" oninput="analisarPorcentagem()">
+            <div id="label-percent" class="percent-badge">Taxa: 0.00%</div>
             
             <select id="in-cat" style="margin-top:10px;">
                 <option value="Infraestrutura">🏠 Infraestrutura</option>
                 <option value="Alimentação">🍽 Alimentação</option>
                 <option value="Outros">📦 Outros</option>
             </select>
-            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:15px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold; cursor: pointer;">GRAVAR</button>
+            
+            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:20px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold; cursor: pointer;">GRAVAR NA MEMÓRIA</button>
             <button onclick="closeModal('modal-add')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:10px; cursor: pointer;">Cancelar</button>
         </div>
     </div>
