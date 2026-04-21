@@ -92,7 +92,10 @@
         </div>
 
         <div class="dashboard">
-            <span style="font-size: 12px; color: var(--t3); font-weight: 800;">TOTAL DE INFRA</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-size: 12px; color: var(--t3); font-weight: 800;">TOTAL DE INFRA</span>
+                <button onclick="logout()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:var(--err); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:800; cursor:pointer; letter-spacing:0.05em;">SAIR</button>
+            </div>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width:0%"></div></div>
         </div>
