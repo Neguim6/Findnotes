@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>FinNotes Ultra v4.9</title>
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>FinNotes v5.0</title>
     <link rel="manifest" href="manifest.json" />
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,7 +14,7 @@
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
             --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a; 
             --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
-            --r: 14px; --ff: 'Geist', system-ui, -apple-system, sans-serif;
+            --r: 14px; --ff: 'Geist', system-ui, sans-serif;
         }
 
         body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; padding: 15px; display: flex; justify-content: center; overflow-x: hidden; }
@@ -22,7 +23,6 @@
         .dashboard { background: var(--z2); padding: 20px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
         .total-valor { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; color: var(--t1); }
 
-        /* Mobile Swipe Container */
         .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); background: var(--err); }
         .delete-btn-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; z-index: 1; }
 
@@ -32,46 +32,41 @@
         }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
 
-        /* PC Specific: Delete button */
-        .pc-delete { display: none; position: absolute; right: 12px; top: 12px; background: #ef444420; color: #ef4444; border: 1px solid #ef444440; padding: 5px 10px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .pc-delete:hover { background: var(--err); color: white; }
+        .pc-delete { display: none; position: absolute; right: 12px; top: 12px; background: #ef444420; color: #ef4444; border: 1px solid #ef444440; padding: 5px 10px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; }
         @media (min-width: 768px) { .pc-delete { display: block; } }
 
         .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
 
-        /* Modais */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(8px); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(10px); }
         .modal.active { display: flex; }
 
         input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 14px; margin-top: 10px; outline: none; font-size: 16px; }
-        input:focus { border-color: var(--ac); }
 
         .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 32px; z-index: 100; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
 
-        /* Logs */
         #log-area { margin-top: 40px; border-top: 1px solid var(--z3); padding-top: 20px; }
-        .log-entry { font-size: 11px; color: var(--t3); padding: 6px 0; border-bottom: 1px solid #18181b; font-family: 'Courier New', Courier, monospace; }
+        .log-entry { font-size: 10px; color: var(--t3); padding: 5px 0; border-bottom: 1px solid #18181b; font-family: monospace; }
     </style>
 </head>
 <body>
 
     <div id="app">
         <header style="text-align: center; margin-bottom: 25px;">
-            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: -1px;">Fin<span style="color:var(--ac)">Notes</span></h1>
-            <p style="font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: 2px;">Admin Panel v4.9</p>
+            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v5.0</span></h1>
+            <p style="font-size: 10px; color: var(--t3);">SECURE STORAGE SYSTEM</p>
         </header>
 
         <div class="dashboard">
-            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase; font-weight: 700;">Comprometido Geral</span>
+            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Comprometido Total</span>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
-            <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width: 0%"></div></div>
+            <div class="progress-bg"><div id="total-progress" class="progress-fill"></div></div>
         </div>
 
         <div id="notes-list"></div>
 
         <div id="log-area">
-            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 12px; letter-spacing: 1px;">HISTÓRICO DE TRANSAÇÕES</h4>
+            <h4 style="font-size: 10px; color: var(--t2); margin-bottom: 10px;">LOGS DA PASTA /TEMP (VIRTUAL)</h4>
             <div id="logs"></div>
         </div>
 
@@ -79,14 +74,14 @@
     </div>
 
     <div class="modal" id="modal-add">
-        <div class="dashboard" style="width: 100%; max-width: 400px; margin: 0;">
-            <h3 style="margin-bottom: 15px;">Novo Lançamento</h3>
-            <input type="text" id="in-nome" placeholder="Descrição do Item">
+        <div class="dashboard" style="width: 100%; max-width: 400px;">
+            <h3>Gravar Registro</h3>
+            <input type="text" id="in-nome" placeholder="Descrição">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="number" id="in-valor" placeholder="Valor Base" oninput="calcJuros()">
+                <input type="number" id="in-valor" placeholder="Valor" oninput="calcJuros()">
                 <select id="in-parcelas" onchange="calcJuros()"></select>
             </div>
-            <input type="number" id="in-total" step="0.01" placeholder="Total com Juros" style="border-color: var(--ac);">
+            <input type="number" id="in-total" step="0.01" style="border-color: var(--ac);">
             <select id="in-cat">
                 <option value="Infraestrutura">🏠 Infraestrutura</option>
                 <option value="Alimentação">🍽 Alimentação</option>
@@ -94,21 +89,26 @@
                 <option value="Lazer">🎮 Lazer</option>
                 <option value="Outros">📦 Outros</option>
             </select>
-            <button onclick="saveNote()" style="width: 100%; padding: 15px; margin-top: 20px; background: var(--ac); border:none; border-radius: 12px; color:white; font-weight: 800; cursor: pointer;">SALVAR</button>
-            <button onclick="closeModal('modal-add')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 10px; cursor: pointer;">CANCELAR</button>
+            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:15px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold;">SALVAR NA MEMÓRIA</button>
+            <button onclick="closeModal('modal-add')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:10px;">Cancelar</button>
         </div>
     </div>
 
     <div class="modal" id="modal-pwd">
-        <div class="dashboard" style="width: 100%; max-width: 320px; text-align: center; margin: 0;">
-            <h3 style="margin-bottom: 5px;">Segurança</h3>
-            <p style="font-size: 12px; color: var(--t3); margin-bottom: 20px;">Confirme a senha para pagar</p>
+        <div class="dashboard" style="width: 100%; max-width: 320px; text-align: center;">
+            <h3 id="pwd-title">Confirmar Ação</h3>
+            <p id="pwd-desc" style="font-size: 12px; color: var(--t3); margin: 10px 0 20px;"></p>
             <input type="password" id="confirm-pwd" placeholder="••••••" style="text-align: center; font-size: 28px; letter-spacing: 6px;">
-            <button onclick="validateAndPay()" style="width: 100%; padding: 15px; margin-top: 20px; background: var(--ok); border:none; border-radius: 12px; color:white; font-weight: 800; cursor: pointer;">CONFIRMAR</button>
-            <button onclick="closeModal('modal-pwd')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 10px; cursor: pointer;">VOLTAR</button>
+            <button id="pwd-confirm-btn" style="width: 100%; padding: 15px; margin-top: 20px; background: var(--ok); border:none; border-radius: 12px; color:white; font-weight: 800;">AUTENTICAR</button>
+            <button onclick="closeModal('modal-pwd')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 10px;">Abortar</button>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
 </body>
 </html>
