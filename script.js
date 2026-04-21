@@ -1,18 +1,22 @@
 'use strict';
 
-// PWA: Service Worker e Auto-Update
+// 1. PWA & AUTO-UPDATE
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) { window.location.reload(); refreshing = true; }
+        if (!refreshing) { 
+            window.location.reload(); 
+            refreshing = true; 
+        }
     });
 }
 
-// Lógica de Instalação
+// 2. Lógica de Instalação (PWA)
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); deferredPrompt = e;
+    e.preventDefault();
+    deferredPrompt = e;
     document.getElementById('install-row').style.display = 'flex';
 });
 
@@ -25,9 +29,9 @@ async function installApp() {
     }
 }
 
-// Configurações e Dados
-const K_ENC = "MjU4NDU2"; // 258456
-let notes = JSON.parse(localStorage.getItem('finnotes_v11_data') || '[]');
+// 3. Sistema Base
+const K_ENC = "MjU4NDU2"; 
+let notes = JSON.parse(localStorage.getItem('finnotes_v12_data') || '[]');
 let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
 
@@ -69,7 +73,7 @@ function validateAuth() {
     } else { alert("SENHA INCORRETA"); }
 }
 
-function sync() { localStorage.setItem('finnotes_v11_data', JSON.stringify(notes)); render(); }
+function sync() { localStorage.setItem('finnotes_v12_data', JSON.stringify(notes)); render(); }
 
 function render() {
     const list = document.getElementById('notes-list');
@@ -81,7 +85,7 @@ function render() {
         const isDone = n.pagas === n.parcelas;
         const color = { 'Infraestrutura': '#34d399', 'Hardware': '#f97316' }[n.cat] || '#3b82f6';
         
-        // Data subsequente: Próximo mês + meses já pagos
+        // Vencimento mês seguinte
         const dataRef = new Date();
         dataRef.setMonth(dataRef.getMonth() + (n.pagas + 1));
         const mesVenc = dataRef.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase();
@@ -100,7 +104,7 @@ function render() {
         
         const el = container.querySelector('.card');
         
-        // GESTO MOBILE (Deslizar para a direita)
+        // GESTO MOBILE (DIREITA PARA APAGAR)
         let startX = 0;
         el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; }, {passive: true});
         el.addEventListener('touchmove', (e) => {
@@ -108,7 +112,7 @@ function render() {
             if (moveX > 0) el.style.transform = `translateX(${moveX}px)`;
         }, {passive: true});
         el.addEventListener('touchend', (e) => {
-            el.style.transition = '0.3s';
+            el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
             let diff = e.changedTouches[0].clientX - startX;
             if (diff > 150) { 
                 el.style.transform = 'translateX(100%)'; 
@@ -119,10 +123,9 @@ function render() {
             }
         });
 
-        // PC Click
         el.onclick = () => { if (window.innerWidth > 1024 && !isDone) askAuth(n.id, 'pay'); };
         list.appendChild(container);
     });
     document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-if(localStorage.getItem('finnotes_v11_data')) render();
+if(localStorage.getItem('finnotes_v12_data')) render();
