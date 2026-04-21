@@ -1,13 +1,16 @@
 const CACHE = 'finnotes-v14';
 const ASSETS = ['./index.html', './script.js', './manifest.json'];
 
+// Instala: cacheia arquivos novos em background SEM interromper o app atual
 self.addEventListener('install', (e) => {
-  self.skipWaiting();
+  // NÃO chama skipWaiting() aqui — deixa o SW antigo continuar rodando
+  // O novo SW só assume quando o usuário fechar e reabrir o app
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(ASSETS))
   );
 });
 
+// Ativa: limpa caches antigos e assume o controle
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -17,18 +20,29 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Network first com fallback cache:
+// - Sempre tenta buscar versão atualizada do servidor
+// - Se offline ou falhar, usa o cache
+// - Dados do usuário (localStorage/IDB) nunca são tocados pelo SW
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
-  const isAppFile = ASSETS.some((a) => url.pathname.endsWith(a.replace('./', '/')));
+  const isAppFile = ASSETS.some((a) =>
+    url.pathname.endsWith(a.replace('./', '/')) || url.pathname.endsWith('/')
+  );
+
   if (isAppFile) {
     e.respondWith(
       fetch(e.request)
         .then((res) => {
-          caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+          // Atualiza o cache com a versão nova silenciosamente
+          if (res.ok) {
+            caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+          }
           return res;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(e.request)) // offline: usa cache
     );
   } else {
     e.respondWith(
@@ -37,6 +51,7 @@ self.addEventListener('fetch', (e) => {
   }
 });
 
+// ─── NOTIFICAÇÕES EM BACKGROUND ──────────────────────────────────────────────
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'CHECK_ALERTS') checkAndNotify(e.data.notes);
 });
@@ -79,8 +94,8 @@ async function checkAndNotify(notes) {
     const hoje = new Date().toISOString().slice(0,10);
     const tag = `finnotes-${n.id}-${hoje}`;
     let titulo = null, corpo = null;
-    if (diff < 0)        { titulo='🚨 Conta Vencida!';              corpo=`"${n.nome}" venceu em ${dataFmt}. Valor: ${vp}`; }
-    else if (diff === 0) { titulo='⚠️ Vence Hoje!';                 corpo=`"${n.nome}" vence hoje. Valor: ${vp}`; }
+    if (diff < 0)        { titulo='🚨 Conta Vencida!';                       corpo=`"${n.nome}" venceu em ${dataFmt}. Valor: ${vp}`; }
+    else if (diff === 0) { titulo='⚠️ Vence Hoje!';                          corpo=`"${n.nome}" vence hoje. Valor: ${vp}`; }
     else if (diff <= 3)  { titulo=`🔔 Vence em ${diff} dia${diff>1?'s':''}`; corpo=`"${n.nome}" vence em ${dataFmt}. Valor: ${vp}`; }
     if (titulo) {
       const ex = await self.registration.getNotifications({ tag });
