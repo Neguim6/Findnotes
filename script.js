@@ -420,18 +420,21 @@ function render() {
         // GESTO MOBILE — swipe direita para apagar, com zona morta no botão
         let startX = 0;
         let startY = 0;
-        let isSwipingCard = false;
+        let dirLocked = null; // 'h' = horizontal, 'v' = vertical, null = indefinido
         let touchStartedOnButton = false;
 
-        el.addEventListener('touchstart', (e) => {
-            // Detectar se o toque iniciou no botão apagar
-            const target = e.target.closest('.btn-del-fixo');
-            touchStartedOnButton = !!target;
-            if (touchStartedOnButton) return;
+        const resetCard = () => {
+            el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            el.style.transform = 'translateX(0)';
+            dirLocked = null;
+        };
 
+        el.addEventListener('touchstart', (e) => {
+            touchStartedOnButton = !!e.target.closest('.btn-del-fixo');
+            if (touchStartedOnButton) return;
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
-            isSwipingCard = false;
+            dirLocked = null;
             el.style.transition = 'none';
         }, { passive: true });
 
@@ -440,36 +443,39 @@ function render() {
             const moveX = e.touches[0].clientX - startX;
             const moveY = e.touches[0].clientY - startY;
 
-            // Verificar se é horizontal (não scroll vertical)
-            if (!isSwipingCard && Math.abs(moveX) > Math.abs(moveY) && Math.abs(moveX) > 8) {
-                isSwipingCard = true;
+            // Determina direção dominante na primeira vez que passa de 10px
+            if (!dirLocked && (Math.abs(moveX) > 10 || Math.abs(moveY) > 10)) {
+                dirLocked = Math.abs(moveX) > Math.abs(moveY) ? 'h' : 'v';
             }
 
-            if (isSwipingCard && moveX > 0) {
+            // Só move o card se for claramente horizontal
+            if (dirLocked === 'h' && moveX > 0) {
                 el.style.transform = `translateX(${moveX}px)`;
             }
         }, { passive: true });
 
         el.addEventListener('touchend', (e) => {
             if (touchStartedOnButton) return;
-            el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
             const diffX = e.changedTouches[0].clientX - startX;
             const diffY = e.changedTouches[0].clientY - startY;
 
-            // Swipe para apagar: mínimo 200px horizontal, pouco vertical
-            if (isSwipingCard && diffX > 200 && Math.abs(diffY) < 80) { 
-                el.style.transform = 'translateX(100%)'; 
-                setTimeout(() => { 
-                    askAuth(n.id, 'delete'); 
-                    el.style.transform = 'translateX(0)'; 
+            if (dirLocked === 'h' && diffX > 200 && Math.abs(diffY) < 80) {
+                el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                el.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    askAuth(n.id, 'delete');
+                    el.style.transform = 'translateX(0)';
                 }, 250);
-            } else { 
-                el.style.transform = 'translateX(0)'; 
-                // Tap (sem swipe) em desktop ou mobile faz baixa
+            } else {
+                resetCard();
                 const isTap = Math.abs(diffX) < 10 && Math.abs(diffY) < 10;
                 if (isTap && !isDone) askAuth(n.id, 'pay');
             }
+            dirLocked = null;
         });
+
+        // Quando o browser assume o scroll, cancela o gesto sem deixar o card deslocado
+        el.addEventListener('touchcancel', resetCard, { passive: true });
 
         // Desktop: click para baixa
         el.onclick = (e) => { 
