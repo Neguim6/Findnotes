@@ -1,7 +1,6 @@
 'use strict';
 
-// Configurações
-const RATE = 0.02; // 2% Juros Simples
+const RATE = 0.02; 
 const STORAGE_KEY = 'finnotes_v4_data';
 const CATS = {
     'Alimentação': { icon: '🍽', color: '#f97316', bg: '#431407' },
@@ -14,29 +13,19 @@ const CATS = {
 let notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let deferredPrompt;
 
-// --- LÓGICA DE INSTALAÇÃO ---
+// PWA Install
 const installBtn = document.getElementById('install-btn');
-
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     installBtn.style.display = 'block';
-
     installBtn.addEventListener('click', async () => {
         installBtn.style.display = 'none';
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`Instalação: ${outcome}`);
         deferredPrompt = null;
     });
 });
 
-window.addEventListener('appinstalled', () => {
-    installBtn.style.display = 'none';
-    deferredPrompt = null;
-});
-
-// --- LÓGICA DO APP ---
 function toggleModal(show) {
     document.getElementById('modal').classList.toggle('active', show);
     if(show) document.getElementById('in-nome').focus();
@@ -45,19 +34,18 @@ function toggleModal(show) {
 function calcJuros() {
     const v = parseFloat(document.getElementById('in-valor').value) || 0;
     const p = parseInt(document.getElementById('in-parcelas').value);
-    // Fórmula: Total = Valor + (Valor * Taxa * Meses)
     const total = p === 1 ? v : v * (1 + (RATE * p));
     document.getElementById('in-total').value = total.toFixed(2);
 }
 
 function saveNote() {
     const nome = document.getElementById('in-nome').value;
-    const valorReal = parseFloat(document.getElementById('in-valor').value);
-    const valorJuros = parseFloat(document.getElementById('in-total').value);
+    const valorReal = parseFloat(document.getElementById('in-valor').value) || 0;
+    const valorJuros = parseFloat(document.getElementById('in-total').value); 
     const parcelas = parseInt(document.getElementById('in-parcelas').value);
     const categoria = document.getElementById('in-cat').value;
 
-    if (!nome || !valorReal) return alert("Preencha o nome e valor!");
+    if (!nome || isNaN(valorJuros)) return alert("Preencha o nome e o valor total!");
 
     const note = {
         id: Date.now(),
@@ -70,7 +58,6 @@ function saveNote() {
     update();
     toggleModal(false);
     
-    // Limpar campos
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor').value = '';
     document.getElementById('in-total').value = '';
@@ -88,7 +75,7 @@ function toggleParcela(id) {
 
 function deleteNote(id, event) {
     event.stopPropagation();
-    if(confirm("Eliminar este registo?")) {
+    if(confirm("Deseja apagar este registro?")) {
         notes = notes.filter(n => n.id !== id);
         update();
     }
@@ -110,13 +97,14 @@ function render() {
         const cat = CATS[n.categoria] || CATS['Outros'];
         const valorParcela = n.valorJuros / n.parcelas;
         const progresso = (n.pagas / n.parcelas) * 100;
+        const estaPago = n.pagas === n.parcelas;
         
         somaTotal += n.valorJuros;
         somaPaga += (n.pagas * valorParcela);
 
         const card = document.createElement('div');
-        card.className = 'card';
-        card.style.setProperty('--color', cat.color);
+        card.className = `card ${estaPago ? 'is-paid' : ''}`;
+        card.style.setProperty('--color', estaPago ? 'var(--ok)' : cat.color);
         card.onclick = () => toggleParcela(n.id);
         
         card.innerHTML = `
@@ -124,7 +112,7 @@ function render() {
                 <div style="flex:1">
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                         <span style="font-weight:700; font-size:15px; color:var(--t1)">${n.nome}</span>
-                        <span class="badge" style="--bg:${cat.bg}; --color:${cat.color}">${cat.icon}</span>
+                        ${estaPago ? '<span class="paid-stamp">PAGO</span>' : `<span class="badge" style="--bg:${cat.bg}; --color:${cat.color}">${cat.icon}</span>`}
                     </div>
                     <div style="font-size:12px; color:var(--t3); font-family:monospace;">${n.parcelas}x de R$ ${valorParcela.toFixed(2)}</div>
                 </div>
@@ -134,17 +122,16 @@ function render() {
                 </div>
             </div>
             <div style="margin-top:14px; display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:var(--t3); text-transform:uppercase;">
-                <span>Pagas: ${n.pagas}/${n.parcelas}</span>
+                <span>Parcelas: ${n.pagas}/${n.parcelas}</span>
                 <span>${progresso.toFixed(0)}%</span>
             </div>
             <div class="progress-bg">
-                <div class="progress-fill" style="width: ${progresso}%; background: ${progresso === 100 ? 'var(--ok)' : 'var(--ac)'}"></div>
+                <div class="progress-fill" style="width: ${progresso}%; background: ${estaPago ? 'var(--ok)' : 'var(--ac)'}"></div>
             </div>
         `;
         list.appendChild(card);
     });
 
-    // Atualizar Dashboard
     document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.getElementById('label-pagas').innerText = `Pagas: ${somaPaga.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
     const pctGeral = somaTotal > 0 ? (somaPaga / somaTotal * 100) : 0;
@@ -152,7 +139,6 @@ function render() {
     document.getElementById('total-progress').style.width = pctGeral + '%';
 }
 
-// Service Worker Registration
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
 }
