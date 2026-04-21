@@ -1,6 +1,6 @@
 'use strict';
 
-const RATE = 0.02; 
+const RATE = 0.02; // Sugestão base de 2%
 const STORAGE_KEY = 'finnotes_v4_data';
 const CATS = {
     'Alimentação': { icon: '🍽', color: '#f97316', bg: '#431407' },
@@ -13,7 +13,7 @@ const CATS = {
 let notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let deferredPrompt;
 
-// PWA Install
+// --- INSTALAÇÃO PWA ---
 const installBtn = document.getElementById('install-btn');
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -26,6 +26,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
 });
 
+// --- LÓGICA DO SISTEMA ---
 function toggleModal(show) {
     document.getElementById('modal').classList.toggle('active', show);
     if(show) document.getElementById('in-nome').focus();
@@ -34,30 +35,30 @@ function toggleModal(show) {
 function calcJuros() {
     const v = parseFloat(document.getElementById('in-valor').value) || 0;
     const p = parseInt(document.getElementById('in-parcelas').value);
+    // Sugere cálculo automático, mas o usuário pode editar no campo 'in-total'
     const total = p === 1 ? v : v * (1 + (RATE * p));
     document.getElementById('in-total').value = total.toFixed(2);
 }
 
 function saveNote() {
     const nome = document.getElementById('in-nome').value;
-    const valorReal = parseFloat(document.getElementById('in-valor').value) || 0;
     const valorJuros = parseFloat(document.getElementById('in-total').value); 
     const parcelas = parseInt(document.getElementById('in-parcelas').value);
     const categoria = document.getElementById('in-cat').value;
 
-    if (!nome || isNaN(valorJuros)) return alert("Preencha o nome e o valor total!");
+    if (!nome || isNaN(valorJuros)) return alert("Preencha os campos obrigatórios.");
 
     const note = {
         id: Date.now(),
-        nome, valorReal, valorJuros, parcelas, categoria,
-        pagas: 0,
-        data: new Date().toLocaleDateString('pt-BR')
+        nome, valorJuros, parcelas, categoria,
+        pagas: 0
     };
 
     notes.unshift(note);
     update();
     toggleModal(false);
     
+    // Reset campos
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor').value = '';
     document.getElementById('in-total').value = '';
@@ -75,7 +76,7 @@ function toggleParcela(id) {
 
 function deleteNote(id, event) {
     event.stopPropagation();
-    if(confirm("Deseja apagar este registro?")) {
+    if(confirm("Deseja apagar permanentemente?")) {
         notes = notes.filter(n => n.id !== id);
         update();
     }
@@ -108,9 +109,9 @@ function render() {
         card.onclick = () => toggleParcela(n.id);
         
         card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div style="display:flex; justify-content:space-between; align-items:start; gap: 10px;">
                 <div style="flex:1">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <div style="display:flex; align-items:center; flex-wrap: wrap; gap:6px; margin-bottom:4px;">
                         <span style="font-weight:700; font-size:15px; color:var(--t1)">${n.nome}</span>
                         ${estaPago ? '<span class="paid-stamp">PAGO</span>' : `<span class="badge" style="--bg:${cat.bg}; --color:${cat.color}">${cat.icon}</span>`}
                     </div>
@@ -122,7 +123,7 @@ function render() {
                 </div>
             </div>
             <div style="margin-top:14px; display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:var(--t3); text-transform:uppercase;">
-                <span>Parcelas: ${n.pagas}/${n.parcelas}</span>
+                <span>Progresso: ${n.pagas}/${n.parcelas}</span>
                 <span>${progresso.toFixed(0)}%</span>
             </div>
             <div class="progress-bg">
