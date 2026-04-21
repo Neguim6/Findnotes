@@ -114,9 +114,11 @@ document.getElementById('main-login-pwd').addEventListener('keydown', (e) => {
 
 // Preencher select de parcelas
 const selP = document.getElementById('in-parcelas');
-for (let i = 1; i <= 48; i++) { 
-    selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i + 'x'}</option>`; 
+const opcoesParc = [];
+for (let i = 1; i <= 48; i++) {
+    opcoesParc.push(`<option value="${i}">${i === 1 ? 'À vista' : i + 'x'}</option>`);
 }
+selP.innerHTML = opcoesParc.join('');
 
 // Calcular parcela automaticamente
 function calcParcela() {
