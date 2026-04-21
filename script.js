@@ -1,25 +1,50 @@
 'use strict';
 
-const MASTER_PASSWORD = "258456";
-let notes = JSON.parse(localStorage.getItem('finnotes_v6_data') || '[]');
+// DADOS CRIPTOGRAFADOS (Base64)
+const K_ENC = "MjU4NDU2"; // 258456
+const M_ENC = "c29sb3NhZ3JhZG90QGdtYWlsLmNvbQ=="; // solosagradot@gmail.com
+
+let notes = JSON.parse(localStorage.getItem('finnotes_v7_data') || '[]');
 let pendingAction = { id: null, type: null };
 
-// Função de Entrada no Sistema
-function checkLogin() {
-    const input = document.getElementById('main-login-pwd');
-    if(input.value === MASTER_PASSWORD) {
-        document.getElementById('lock-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        addLog("Acesso autorizado pelo administrador");
-        render(); // Só renderiza se logar
-    } else {
-        alert("SENHA INCORRETA");
-        input.value = '';
-        input.focus();
+// Decodificadores
+const getK = () => atob(K_ENC);
+const getM = () => atob(M_ENC);
+
+async function enviarNotificacao(item, atual) {
+    const payload = {
+        _subject: `FinNotes: Pagamento Confirmado - ${item.nome}`,
+        item: item.nome,
+        parcela: `${atual} de ${item.parcelas}`,
+        valor: `R$ ${item.total.toFixed(2)}`,
+        data: new Date().toLocaleString('pt-BR')
+    };
+    try {
+        await fetch(`https://formsubmit.co/ajax/${getM()}`, {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        addLog("Notificação de segurança enviada.");
+    } catch (e) {
+        addLog("Erro na rede ao enviar e-mail.");
     }
 }
 
-// Preencher parcelas
+function checkLogin() {
+    const val = document.getElementById('main-login-pwd').value;
+    if(val === getK()) {
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        addLog("Acesso autorizado");
+        render();
+    } else {
+        alert("SENHA INCORRETA");
+        document.getElementById('main-login-pwd').value = '';
+    }
+}
+
+// Popular Parcelas
 const selP = document.getElementById('in-parcelas');
 for(let i=1; i<=12; i++) {
     selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`;
@@ -36,10 +61,9 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 function addLog(msg) {
     const logs = document.getElementById('logs');
-    if(!logs) return;
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    entry.textContent = `> /temp/auth_${Date.now()}.sys: ${msg.toUpperCase()}`;
+    entry.textContent = `> /sys/log_${Date.now()}: ${msg.toUpperCase()}`;
     logs.prepend(entry);
 }
 
@@ -48,8 +72,7 @@ function analisarPorcentagem() {
     const v2 = parseFloat(document.getElementById('in-valor2').value) || 0;
     const label = document.getElementById('label-percent');
     if (v1 > 0 && v2 >= v1) {
-        const taxa = ((v2 - v1) / v1) * 100;
-        label.textContent = `Taxa: ${taxa.toFixed(2)}%`;
+        label.textContent = `Taxa: ${(((v2 - v1) / v1) * 100).toFixed(2)}%`;
     } else {
         label.textContent = "Taxa: 0.00%";
     }
@@ -58,13 +81,12 @@ function analisarPorcentagem() {
 function saveNote() {
     const nome = document.getElementById('in-nome').value;
     const total = parseFloat(document.getElementById('in-valor2').value);
-    if(!nome || isNaN(total)) return alert("Preencha descrição e valor final.");
+    if(!nome || isNaN(total)) return;
 
     notes.unshift({ id: Date.now(), nome, total, parcelas: parseInt(document.getElementById('in-parcelas').value), cat: document.getElementById('in-cat').value, pagas: 0 });
     sync();
     closeModal('modal-add');
-    addLog(`Registro salvo: ${nome}`);
-    
+    addLog(`Salvo: ${nome}`);
     document.getElementById('in-nome').value = '';
     document.getElementById('in-valor1').value = '';
     document.getElementById('in-valor2').value = '';
@@ -80,10 +102,13 @@ function askAuth(id, type) {
 }
 
 function validateAuth() {
-    if(document.getElementById('confirm-pwd').value === MASTER_PASSWORD) {
+    if(document.getElementById('confirm-pwd').value === getK()) {
         if(pendingAction.type === 'pay') {
             notes = notes.map(n => {
-                if(n.id === pendingAction.id && n.pagas < n.parcelas) n.pagas += 1;
+                if(n.id === pendingAction.id && n.pagas < n.parcelas) {
+                    n.pagas += 1;
+                    enviarNotificacao(n, n.pagas);
+                }
                 return n;
             });
         } else {
@@ -97,18 +122,17 @@ function validateAuth() {
 }
 
 function sync() {
-    localStorage.setItem('finnotes_v6_data', JSON.stringify(notes));
+    localStorage.setItem('finnotes_v7_data', JSON.stringify(notes));
     render();
 }
 
 function render() {
     const list = document.getElementById('notes-list');
-    if(!list) return;
     list.innerHTML = '';
-    let somaTotal = 0;
+    let total = 0;
 
     notes.forEach(n => {
-        somaTotal += n.total;
+        total += n.total;
         const prog = (n.pagas / n.parcelas) * 100;
         const isDone = n.pagas === n.parcelas;
         const color = { 'Infraestrutura': '#34d399', 'Alimentação': '#f97316' }[n.cat] || '#3b82f6';
@@ -133,20 +157,20 @@ function render() {
         `;
 
         const el = container.querySelector('.card');
-        let startX = 0;
-        el.ontouchstart = e => { startX = e.touches[0].clientX; el.style.transition = 'none'; };
+        let sX = 0;
+        el.ontouchstart = e => { sX = e.touches[0].clientX; el.style.transition = 'none'; };
         el.ontouchmove = e => {
-            let diff = e.touches[0].clientX - startX;
-            if(diff > 0 && diff < 120) el.style.transform = `translateX(${diff}px)`;
+            let d = e.touches[0].clientX - sX;
+            if(d > 0 && d < 120) el.style.transform = `translateX(${d}px)`;
         };
         el.ontouchend = e => {
             el.style.transition = '0.3s';
-            let diff = e.changedTouches[0].clientX - startX;
-            if(diff > 80) { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }
-            else { el.style.transform = 'translateX(0)'; if(Math.abs(diff) < 5 && !isDone) askAuth(n.id, 'pay'); }
+            let d = e.changedTouches[0].clientX - sX;
+            if(d > 80) { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }
+            else { el.style.transform = 'translateX(0)'; if(Math.abs(d) < 5 && !isDone) askAuth(n.id, 'pay'); }
         };
         el.onclick = () => { if(window.innerWidth > 768 && !isDone) askAuth(n.id, 'pay'); };
         list.appendChild(container);
     });
-    document.getElementById('total-geral').innerText = somaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('total-geral').innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
