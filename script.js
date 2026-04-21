@@ -36,25 +36,90 @@ let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
 
 function checkLogin() {
-    if(document.getElementById('main-login-pwd').value === getK()) {
+    const pwdInput = document.getElementById('main-login-pwd');
+    if (pwdInput.value === getK()) {
         document.getElementById('lock-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         render();
-    } else { alert("SENHA INCORRETA"); }
+    } else { 
+        alert("SENHA INCORRETA"); 
+        pwdInput.value = '';
+        pwdInput.focus();
+    }
 }
 
-const selP = document.getElementById('in-parcelas');
-for(let i=1; i<=12; i++) { selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i+'x'}</option>`; }
+// Permitir Enter para login
+document.getElementById('main-login-pwd').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') checkLogin();
+});
 
-function openModal(id) { document.getElementById(id).classList.add('active'); if(id==='modal-pwd') document.getElementById('confirm-pwd').focus(); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+// Preencher select de parcelas
+const selP = document.getElementById('in-parcelas');
+for (let i = 1; i <= 48; i++) { 
+    selP.innerHTML += `<option value="${i}">${i === 1 ? 'À vista' : i + 'x'}</option>`; 
+}
+
+// Calcular parcela automaticamente
+function calcParcela() {
+    const total = parseFloat(document.getElementById('in-valor2').value);
+    const parcelas = parseInt(document.getElementById('in-parcelas').value);
+    const parcelaEl = document.getElementById('in-parcela-calc');
+    if (!isNaN(total) && parcelas > 0) {
+        const valorParcela = total / parcelas;
+        parcelaEl.textContent = `Parcela: R$ ${valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        parcelaEl.style.display = 'block';
+    } else {
+        parcelaEl.style.display = 'none';
+    }
+}
+
+document.getElementById('in-valor2').addEventListener('input', calcParcela);
+document.getElementById('in-parcelas').addEventListener('change', calcParcela);
+
+function openModal(id) { 
+    document.getElementById(id).classList.add('active'); 
+    if (id === 'modal-pwd') document.getElementById('confirm-pwd').focus(); 
+}
+
+function closeModal(id) { 
+    document.getElementById(id).classList.remove('active'); 
+    if (id === 'modal-add') {
+        // Limpar campos ao fechar
+        document.getElementById('in-nome').value = '';
+        document.getElementById('in-valor1').value = '';
+        document.getElementById('in-valor2').value = '';
+        document.getElementById('in-parcelas').value = '1';
+        document.getElementById('in-data').value = '';
+        document.getElementById('in-parcela-calc').style.display = 'none';
+    }
+    if (id === 'modal-pwd') {
+        document.getElementById('confirm-pwd').value = '';
+    }
+}
 
 function saveNote() {
-    const nome = document.getElementById('in-nome').value;
+    const nome = document.getElementById('in-nome').value.trim();
+    const valorOriginal = parseFloat(document.getElementById('in-valor1').value);
     const total = parseFloat(document.getElementById('in-valor2').value);
-    if(!nome || isNaN(total)) return;
-    notes.unshift({ id: Date.now(), nome, total, parcelas: parseInt(document.getElementById('in-parcelas').value), cat: document.getElementById('in-cat').value, pagas: 0 });
-    sync(); closeModal('modal-add');
+    const dataVenc = document.getElementById('in-data').value;
+    
+    if (!nome || isNaN(total)) {
+        alert('Preencha ao menos a descrição e o total com taxas.');
+        return;
+    }
+
+    notes.unshift({ 
+        id: Date.now(), 
+        nome, 
+        valorOriginal: isNaN(valorOriginal) ? null : valorOriginal,
+        total, 
+        parcelas: parseInt(document.getElementById('in-parcelas').value), 
+        cat: document.getElementById('in-cat').value, 
+        pagas: 0,
+        dataVenc: dataVenc || null
+    });
+    sync(); 
+    closeModal('modal-add');
 }
 
 function askAuth(id, type) {
@@ -64,16 +129,45 @@ function askAuth(id, type) {
     openModal('modal-pwd');
 }
 
+// Enter para confirmar senha
+document.getElementById('confirm-pwd').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') validateAuth();
+});
+
 function validateAuth() {
-    if(document.getElementById('confirm-pwd').value === getK()) {
-        if(pendingAction.type === 'pay') {
-            notes = notes.map(n => { if(n.id === pendingAction.id && n.pagas < n.parcelas) n.pagas += 1; return n; });
-        } else { notes = notes.filter(n => n.id !== pendingAction.id); }
-        sync(); closeModal('modal-pwd');
-    } else { alert("SENHA INCORRETA"); }
+    if (document.getElementById('confirm-pwd').value === getK()) {
+        if (pendingAction.type === 'pay') {
+            notes = notes.map(n => { 
+                if (n.id === pendingAction.id && n.pagas < n.parcelas) n.pagas += 1; 
+                return n; 
+            });
+        } else { 
+            notes = notes.filter(n => n.id !== pendingAction.id); 
+        }
+        sync(); 
+        closeModal('modal-pwd');
+    } else { 
+        alert("SENHA INCORRETA"); 
+        document.getElementById('confirm-pwd').value = '';
+        document.getElementById('confirm-pwd').focus();
+    }
 }
 
-function sync() { localStorage.setItem('finnotes_v12_data', JSON.stringify(notes)); render(); }
+function sync() { 
+    localStorage.setItem('finnotes_v12_data', JSON.stringify(notes)); 
+    render(); 
+}
+
+const CAT_COLORS = {
+    'Infraestrutura': '#34d399',
+    'Hardware':       '#f97316',
+    'Empréstimo':     '#f43f5e',
+    'Assinatura':     '#a78bfa',
+    'Saúde':          '#38bdf8',
+    'Veículo':        '#fbbf24',
+    'Educação':       '#4ade80',
+    'Outros':         '#94a3b8'
+};
 
 function render() {
     const list = document.getElementById('notes-list');
@@ -83,49 +177,118 @@ function render() {
     notes.forEach(n => {
         soma += n.total;
         const isDone = n.pagas === n.parcelas;
-        const color = { 'Infraestrutura': '#34d399', 'Hardware': '#f97316' }[n.cat] || '#3b82f6';
-        
-        // Vencimento mês seguinte
-        const dataRef = new Date();
-        dataRef.setMonth(dataRef.getMonth() + (n.pagas + 1));
-        const mesVenc = dataRef.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase();
+        const color = CAT_COLORS[n.cat] || '#3b82f6';
+        const valorParcela = (n.total / n.parcelas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Data de vencimento
+        let dataDisplay = '';
+        if (n.dataVenc) {
+            const [ano, mes, dia] = n.dataVenc.split('-');
+            dataDisplay = `• PAGAR: ${dia}/${mes}/${ano}`;
+        } else {
+            const dataRef = new Date();
+            dataRef.setMonth(dataRef.getMonth() + (n.pagas + 1));
+            const mesVenc = dataRef.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase();
+            dataDisplay = `• VENC: ${mesVenc}`;
+        }
 
         const container = document.createElement('div');
         container.className = 'card-container';
+
+        const valorOriginalHTML = n.valorOriginal 
+            ? `<span style="color:var(--t3); font-size:11px;">Orig: ${n.valorOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} → </span>`
+            : '';
+
         container.innerHTML = `
             <div class="card ${isDone ? 'completed' : ''}" style="--color:${isDone ? 'var(--ok)' : color}">
-                <div class="btn-del-fixo" onclick="event.stopPropagation(); askAuth(${n.id}, 'delete')">APAGAR</div>
-                <div style="display:flex; justify-content:space-between">
-                    <div><b>${n.nome}</b><br><small>PARCELA ${n.pagas}/${n.parcelas} • VENC: ${mesVenc}</small></div>
-                    <div style="text-align:right; margin-right:20px;"><b>R$ ${n.total.toFixed(2)}</b></div>
+                <div class="btn-del-fixo" data-action="delete">APAGAR</div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1; min-width:0; padding-right:8px;">
+                        <b style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n.nome}</b>
+                        <small style="color:var(--t3);">PARCELA ${n.pagas}/${n.parcelas} ${dataDisplay}</small>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0; margin-right:70px;">
+                        <div>${valorOriginalHTML}<b>R$ ${n.total.toFixed(2)}</b></div>
+                        ${n.parcelas > 1 ? `<small style="color:var(--t2);">${n.parcelas}x de ${valorParcela}</small>` : ''}
+                    </div>
                 </div>
-                <div class="progress-bg"><div class="progress-fill" style="width:${(n.pagas/n.parcelas)*100}%"></div></div>
+                <div class="progress-bg"><div class="progress-fill" style="width:${(n.pagas / n.parcelas) * 100}%"></div></div>
             </div>`;
         
         const el = container.querySelector('.card');
-        
-        // GESTO MOBILE (DIREITA PARA APAGAR)
+        const delBtn = container.querySelector('.btn-del-fixo');
+
+        // Botão apagar fixo
+        delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            askAuth(n.id, 'delete');
+        });
+
+        // GESTO MOBILE — swipe direita para apagar, com zona morta no botão
         let startX = 0;
-        el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; }, {passive: true});
+        let startY = 0;
+        let isSwipingCard = false;
+        let touchStartedOnButton = false;
+
+        el.addEventListener('touchstart', (e) => {
+            // Detectar se o toque iniciou no botão apagar
+            const target = e.target.closest('.btn-del-fixo');
+            touchStartedOnButton = !!target;
+            if (touchStartedOnButton) return;
+
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            isSwipingCard = false;
+            el.style.transition = 'none';
+        }, { passive: true });
+
         el.addEventListener('touchmove', (e) => {
-            let moveX = e.touches[0].clientX - startX;
-            if (moveX > 0) el.style.transform = `translateX(${moveX}px)`;
-        }, {passive: true});
+            if (touchStartedOnButton) return;
+            const moveX = e.touches[0].clientX - startX;
+            const moveY = e.touches[0].clientY - startY;
+
+            // Verificar se é horizontal (não scroll vertical)
+            if (!isSwipingCard && Math.abs(moveX) > Math.abs(moveY) && Math.abs(moveX) > 8) {
+                isSwipingCard = true;
+            }
+
+            if (isSwipingCard && moveX > 0) {
+                el.style.transform = `translateX(${moveX}px)`;
+            }
+        }, { passive: true });
+
         el.addEventListener('touchend', (e) => {
+            if (touchStartedOnButton) return;
             el.style.transition = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            let diff = e.changedTouches[0].clientX - startX;
-            if (diff > 150) { 
+            const diffX = e.changedTouches[0].clientX - startX;
+            const diffY = e.changedTouches[0].clientY - startY;
+
+            // Swipe para apagar: mínimo 200px horizontal, pouco vertical
+            if (isSwipingCard && diffX > 200 && Math.abs(diffY) < 80) { 
                 el.style.transform = 'translateX(100%)'; 
-                setTimeout(() => { askAuth(n.id, 'delete'); el.style.transform = 'translateX(0)'; }, 200);
+                setTimeout(() => { 
+                    askAuth(n.id, 'delete'); 
+                    el.style.transform = 'translateX(0)'; 
+                }, 250);
             } else { 
                 el.style.transform = 'translateX(0)'; 
-                if (Math.abs(diff) < 5 && !isDone) askAuth(n.id, 'pay');
+                // Tap (sem swipe) em desktop ou mobile faz baixa
+                const isTap = Math.abs(diffX) < 10 && Math.abs(diffY) < 10;
+                if (isTap && !isDone) askAuth(n.id, 'pay');
             }
         });
 
-        el.onclick = () => { if (window.innerWidth > 1024 && !isDone) askAuth(n.id, 'pay'); };
+        // Desktop: click para baixa
+        el.onclick = (e) => { 
+            if (!e.target.closest('.btn-del-fixo') && window.innerWidth > 1024 && !isDone) {
+                askAuth(n.id, 'pay'); 
+            }
+        };
+
         list.appendChild(container);
     });
+
     document.getElementById('total-geral').innerText = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-if(localStorage.getItem('finnotes_v12_data')) render();
+
+if (localStorage.getItem('finnotes_v12_data')) render();
