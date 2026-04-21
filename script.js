@@ -35,17 +35,34 @@ let notes = JSON.parse(localStorage.getItem('finnotes_v12_data') || '[]');
 let pendingAction = { id: null, type: null };
 const getK = () => atob(K_ENC);
 
+function logout() {
+    sessionStorage.removeItem('finnotes_unlocked');
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('lock-screen').style.display = 'flex';
+    document.getElementById('main-login-pwd').value = '';
+}
+
+function unlockApp() {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    sessionStorage.setItem('finnotes_unlocked', '1');
+    render();
+}
+
 function checkLogin() {
     const pwdInput = document.getElementById('main-login-pwd');
     if (pwdInput.value === getK()) {
-        document.getElementById('lock-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        render();
+        unlockApp();
     } else { 
         alert("SENHA INCORRETA"); 
         pwdInput.value = '';
         pwdInput.focus();
     }
+}
+
+// Se já estava logado antes do reload (ex: atualização do SW), pula a tela de login
+if (sessionStorage.getItem('finnotes_unlocked') === '1') {
+    unlockApp();
 }
 
 // Permitir Enter para login
