@@ -4,114 +4,116 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <title>FinNotes v9.0 - Final</title>
+    <link rel="manifest" href="manifest.json">
+    <title>FinNotes v10.0</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
             --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a; 
             --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
-            --r: 14px; --ff: 'Geist', system-ui, sans-serif;
+            --r: 16px; --ff: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; display: flex; justify-content: center; overflow-x: hidden; }
         
         #lock-screen { position: fixed; inset: 0; background: var(--z); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .login-box { width: 100%; max-width: 300px; text-align: center; }
         
-        #app { width: 100%; max-width: 500px; padding: 15px 15px 120px 15px; display: none; }
+        #app { width: 100%; max-width: 500px; padding: 15px 15px 120px 15px; display: none; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .dashboard { background: var(--z2); padding: 20px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
-        .total-valor { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
+        #install-row { 
+            display: none; background: linear-gradient(90deg, var(--z2), var(--z3)); 
+            padding: 15px; border-radius: var(--r); margin-bottom: 20px; 
+            border: 1px solid var(--ac); align-items: center; justify-content: space-between;
+        }
 
-        .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); overflow: hidden; }
+        .dashboard { background: var(--z2); padding: 25px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .total-valor { font-size: 36px; font-weight: 800; letter-spacing: -1.5px; margin: 5px 0; color: var(--t1); }
+
+        .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); transition: transform 0.2s; }
+        .card-container:active { transform: scale(0.98); }
         
         .card { 
             background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); 
-            padding: 18px 85px 18px 18px; position: relative; z-index: 2; transition: all 0.2s ease; cursor: pointer; 
+            padding: 20px 90px 20px 20px; position: relative; z-index: 2; cursor: pointer; 
         }
-        .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color); }
-        .card.completed { opacity: 0.5; border-color: var(--ok); }
-        .card.completed b { text-decoration: line-through; color: var(--t3); }
+        .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color); border-radius: var(--r) 0 0 var(--r); }
+        .card.completed { opacity: 0.4; filter: grayscale(0.5); }
 
         .btn-del-fixo {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            background: rgba(239, 68, 68, 0.1); color: var(--err); border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 8px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; z-index: 10;
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            background: rgba(239, 68, 68, 0.15); color: var(--err); border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 10px 12px; border-radius: 10px; font-size: 10px; font-weight: 900; z-index: 10;
         }
 
-        .progress-bg { height: 6px; background: var(--z3); border-radius: 99px; margin-top: 12px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--ac); transition: width 0.6s ease; }
+        .progress-bg { height: 8px; background: var(--z3); border-radius: 99px; margin-top: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--ac); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(15px); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(10px); }
         .modal.active { display: flex; }
 
-        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 14px; margin-top: 10px; outline: none; font-size: 16px; }
-        .percent-badge { font-size: 11px; color: var(--ac); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; margin-top: 8px; display: inline-block; font-weight: bold; border: 1px solid rgba(59, 130, 246, 0.2); }
+        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 12px; color: var(--t1); padding: 16px; margin-top: 12px; outline: none; font-size: 16px; transition: border 0.2s; }
+        input:focus { border-color: var(--ac); }
 
-        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 20px; border: none; font-size: 32px; z-index: 100; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-
-        #logs { margin-top: 20px; }
-        .log-entry { font-size: 10px; color: var(--t3); padding: 5px 0; border-bottom: 1px solid #18181b; font-family: monospace; }
+        .fab { position: fixed; bottom: 35px; left: 50%; transform: translateX(-50%); width: 68px; height: 68px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 36px; z-index: 100; cursor: pointer; box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4); }
     </style>
 </head>
 <body>
 
     <div id="lock-screen">
-        <div class="login-box">
-            <h1 style="font-size: 24px; margin-bottom: 10px;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
-            <p style="font-size: 11px; color: var(--t3); margin-bottom: 25px;">SISTEMA DE CONTROLE DE REDE</p>
-            <input type="password" id="main-login-pwd" placeholder="••••••" style="text-align: center; font-size: 24px; letter-spacing: 8px;">
-            <button onclick="checkLogin()" style="width:100%; padding:15px; margin-top:20px; background:var(--ac); border:none; border-radius:12px; color:white; font-weight:800; cursor: pointer;">DESBLOQUEAR</button>
+        <div style="width: 100%; max-width: 320px; text-align: center;">
+            <h1 style="font-size: 28px; margin-bottom: 5px; font-weight: 900;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
+            <p style="font-size: 12px; color: var(--t3); margin-bottom: 30px; letter-spacing: 2px;">SECURE INFRASTRUCTURE</p>
+            <input type="password" id="main-login-pwd" placeholder="SENHA" style="text-align: center; font-size: 24px; letter-spacing: 8px;">
+            <button onclick="checkLogin()" style="width:100%; padding:18px; margin-top:20px; background:var(--ac); border:none; border-radius:14px; color:white; font-weight:800; cursor:pointer; font-size: 16px;">ENTRAR</button>
         </div>
     </div>
 
     <div id="app">
-        <header style="text-align: center; margin-bottom: 25px;">
-            <h1 style="font-size: 22px; font-weight: 900;">FinNotes <span style="color:var(--ac)">v9.0</span></h1>
-            <p style="font-size: 10px; color: var(--t3);">DASHBOARD DE AUDITORIA</p>
-        </header>
+        <div id="install-row">
+            <span style="font-size: 13px; font-weight: 700;">Instalar no Celular?</span>
+            <button onclick="installApp()" style="background: var(--ac); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; cursor: pointer;">INSTALAR</button>
+        </div>
 
         <div class="dashboard">
-            <span style="font-size: 11px; color: var(--t3); text-transform: uppercase;">Total Geral</span>
+            <span style="font-size: 12px; color: var(--t3); font-weight: 800; letter-spacing: 1px;">COMPROMETIDO TOTAL</span>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div class="progress-bg"><div id="total-progress" class="progress-fill"></div></div>
         </div>
 
         <div id="notes-list"></div>
-        <div id="logs"></div>
+        <div id="logs" style="font-size: 10px; color: var(--t3); margin-top: 30px; font-family: monospace; opacity: 0.5;"></div>
 
         <button class="fab" onclick="openModal('modal-add')">+</button>
     </div>
 
     <div class="modal" id="modal-add">
         <div class="dashboard" style="width: 100%; max-width: 400px; margin:0;">
-            <h3>Novo Registro</h3>
-            <input type="text" id="in-nome" placeholder="Descrição da Infra">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="number" id="in-valor1" placeholder="V. Original" oninput="analisarPorcentagem()">
+            <h3 style="margin-bottom: 15px;">Novo Registro</h3>
+            <input type="text" id="in-nome" placeholder="Descrição (ex: Switch Aruba)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <input type="number" id="in-valor1" placeholder="V. Original">
                 <select id="in-parcelas"></select>
             </div>
-            <input type="number" id="in-valor2" placeholder="V. Com Taxa" step="0.01" oninput="analisarPorcentagem()">
-            <div id="label-percent" class="percent-badge">Custo: 0.00%</div>
-            <select id="in-cat" style="margin-top:10px;">
+            <input type="number" id="in-valor2" placeholder="V. Com Taxas" step="0.01">
+            <select id="in-cat">
                 <option value="Infraestrutura">🏠 Infraestrutura</option>
                 <option value="Hardware">💻 Hardware</option>
-                <option value="Outros">📦 Outros</option>
+                <option value="Serviços">⚙️ Serviços</option>
             </select>
-            <button onclick="saveNote()" style="width:100%; padding:15px; margin-top:20px; background:var(--ac); border:none; border-radius:10px; color:white; font-weight:bold;">SALVAR</button>
-            <button onclick="closeModal('modal-add')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:10px;">Cancelar</button>
+            <button onclick="saveNote()" style="width:100%; padding:16px; margin-top:25px; background:var(--ac); border:none; border-radius:12px; color:white; font-weight:bold; font-size: 16px; cursor: pointer;">GRAVAR</button>
+            <button onclick="closeModal('modal-add')" style="width:100%; background:none; border:none; color:var(--t3); margin-top:15px; cursor:pointer;">Cancelar</button>
         </div>
     </div>
 
     <div class="modal" id="modal-pwd">
         <div class="dashboard" style="width: 100%; max-width: 320px; text-align: center; margin: 0;">
-            <h3 id="pwd-title">Autenticação</h3>
-            <p style="font-size: 11px; color: var(--t3); margin: 10px 0 20px;">Confirme a senha para prosseguir</p>
+            <h3 id="pwd-title">Confirmar</h3>
+            <p style="font-size: 12px; color: var(--t3); margin-top: 5px;">Ação protegida por criptografia</p>
             <input type="password" id="confirm-pwd" placeholder="••••••" style="text-align: center; font-size: 28px; letter-spacing: 6px;">
-            <button id="pwd-confirm-btn" style="width: 100%; padding: 15px; margin-top: 20px; background: var(--ok); border:none; border-radius: 12px; color:white; font-weight: 800;">CONFIRMAR</button>
-            <button onclick="closeModal('modal-pwd')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 10px;">Abortar</button>
+            <button id="pwd-confirm-btn" style="width: 100%; padding: 18px; margin-top: 25px; background: var(--ok); border:none; border-radius: 14px; color:white; font-weight: 800; cursor:pointer;">AUTENTICAR</button>
+            <button onclick="closeModal('modal-pwd')" style="width: 100%; background: none; color: var(--t3); border:none; margin-top: 15px; cursor:pointer;">Abortar</button>
         </div>
     </div>
 
