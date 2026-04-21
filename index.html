@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#09090b" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>FinNotes v4.5</title>
+    <title>FinNotes v4.6 - Secure</title>
     <link rel="manifest" href="manifest.json" />
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,13 +21,13 @@
         .dashboard { background: var(--z2); padding: 24px; border-radius: var(--r2); border: 1px solid var(--z3); margin-bottom: 20px; }
         .total-valor { font-size: 32px; font-weight: 800; margin: 6px 0; letter-spacing: -1px; }
 
-        /* Container do Swipe */
+        /* Container do Swipe lateral */
         .card-container { position: relative; margin-bottom: 12px; overflow: hidden; border-radius: var(--r); background: var(--err); }
         .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; cursor: pointer; z-index: 1; }
 
         .card { 
             background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 18px; 
-            position: relative; z-index: 2; transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); 
+            position: relative; z-index: 2; transition: transform 0.3s ease; 
             cursor: pointer; touch-action: pan-y; 
         }
         .card.is-paid { border-color: #22c55e30; background: #111b14; }
@@ -44,23 +42,22 @@
         input, select { width: 100%; background: var(--z1); border: 1.5px solid var(--z4); border-radius: 10px; color: var(--t1); padding: 12px; margin-top: 6px; font-size: 15px; outline: none; }
         input:focus { border-color: var(--ac); }
 
-        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .fab { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 200; backdrop-filter: blur(10px); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 2000; backdrop-filter: blur(10px); }
         .modal.active { display: flex; }
 
-        @media (min-width: 768px) {
-            .delete-btn { width: 60px; font-size: 10px; opacity: 0.5; transition: opacity 0.2s; }
-            .card-container:hover .delete-btn { opacity: 1; }
-        }
+        /* API Status bar */
+        .api-status { font-size: 10px; color: var(--t3); margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .dot { width: 6px; height: 6px; background: var(--ok); border-radius: 50%; }
     </style>
 </head>
 <body>
 
     <div id="app">
-        <header style="margin-bottom: 25px; text-align: center;">
+        <header style="margin-bottom: 20px; text-align: center;">
             <h1 style="font-size: 24px; font-weight: 800;">Fin<span style="color:var(--ac)">Notes</span></h1>
-            <p style="color:var(--t3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase;">Infrastructure Specialist Edition</p>
+            <div class="api-status"><span class="dot"></span> Taxas Atualizadas via API (Simulada)</div>
         </header>
 
         <div class="dashboard">
@@ -75,7 +72,7 @@
 
         <div id="notes-list"></div>
 
-        <button class="fab" id="openModalBtn" onclick="toggleModal(true)">+</button>
+        <button class="fab" onclick="toggleModal(true)">+</button>
     </div>
 
     <div class="modal" id="modal">
@@ -83,7 +80,7 @@
             <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 800;">Novo Registro</h2>
             
             <label style="font-size: 11px; font-weight: 700; color: var(--t3);">NOME DO ITEM</label>
-            <input type="text" id="in-nome" placeholder="Ex: Equipamento TI">
+            <input type="text" id="in-nome" placeholder="Ex: Servidor VPS">
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
                 <div>
@@ -105,7 +102,7 @@
             </div>
 
             <div style="margin-top: 15px;">
-                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">VALOR TOTAL (Nubank 3,5%)</label>
+                <label style="font-size: 11px; font-weight: 700; color: var(--t3);">VALOR TOTAL FINAL</label>
                 <input type="number" id="in-total" step="0.01" style="background: var(--z1); border-color: var(--ac);">
             </div>
 
@@ -121,8 +118,8 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 25px;">
-                <button onclick="toggleModal(false)" style="flex:1; padding:14px; background:transparent; border:1px solid var(--z5); color:var(--t2); border-radius:12px; font-weight:bold;">Sair</button>
-                <button onclick="saveNote()" style="flex:1; padding:14px; background:var(--ac); border:none; color:white; border-radius:12px; font-weight:bold;">Salvar</button>
+                <button onclick="toggleModal(false)" style="flex:1; padding:14px; background:transparent; border:1px solid var(--z5); color:var(--t2); border-radius:12px; font-weight:bold; cursor:pointer;">Sair</button>
+                <button onclick="saveNote()" style="flex:1; padding:14px; background:var(--ac); border:none; color:white; border-radius:12px; font-weight:bold; cursor:pointer;">Salvar</button>
             </div>
         </div>
     </div>
