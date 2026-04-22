@@ -1,259 +1,38 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="manifest.json">
-    <title>FinNotes v12.0</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
-            --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a;
-            --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
-            --r: 16px; --ff: 'Segoe UI', Roboto, sans-serif;
+function checkLogin() {
+    const input = document.getElementById('main-login-pwd');
+    // .trim() remove espaços que teclados mobile (Samsung/iPhone) colocam sozinhos
+    const senhaDigitada = input.value.trim(); 
+    
+    // Tenta pegar a senha definida pelo usuário no banco, ou usa a sua senha padrão
+    // Substitua '1234' pela sua senha padrão se necessário
+    const senhaCorreta = localStorage.getItem('finnotes_password') || '1234';
+
+    if (senhaDigitada === senhaCorreta) {
+        // Esconde tela de bloqueio e mostra o app
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        
+        // Garante que o teclado feche no celular
+        input.blur(); 
+        
+        // Inicializa as funções do app (renderização de notas e cálculos)
+        if (typeof initApp === 'function') {
+            initApp();
+        } else if (typeof renderNotes === 'function') {
+            renderNotes();
         }
+    } else {
+        alert("Senha Incorreta!");
+        input.value = "";
+        input.focus();
+    }
+}
 
-        body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; display: flex; justify-content: center; overflow-x: hidden; }
-
-        #lock-screen { position: fixed; inset: 0; background: var(--z); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-
-        #app { width: 100%; max-width: 500px; padding: 15px 15px 120px 15px; display: none; }
-
-        #install-row { display: none; background: var(--z2); padding: 15px; border-radius: var(--r); margin-bottom: 20px; border: 1px solid var(--ac); align-items: center; justify-content: space-between; animation: slideIn 0.5s ease; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .dashboard { background: var(--z2); padding: 25px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
-        .total-valor { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
-
-        .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); background: var(--err); }
-        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px 20px 20px 20px; position: relative; z-index: 2; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); touch-action: pan-y; user-select: none; }
-        .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color); border-radius: var(--r) 0 0 var(--r); }
-        .card.completed { opacity: 0.4; }
-
-        .progress-bg { height: 8px; background: var(--z3); border-radius: 99px; margin-top: 15px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--ac); transition: width 0.8s ease; }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(10px); overflow-y: auto; }
-        .modal.active { display: flex; }
-
-        .modal-box { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 25px; width: 100%; max-width: 400px; margin: auto; }
-
-        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 12px; color: var(--t1); padding: 16px; margin-top: 12px; outline: none; font-size: 16px; }
-        input:focus, select:focus { border-color: var(--ac); }
-        select option { background: var(--z1); }
-
-        label.field-label { display: block; font-size: 11px; font-weight: 700; color: var(--t3); margin-top: 16px; margin-bottom: -4px; letter-spacing: 0.05em; text-transform: uppercase; }
-
-        #in-parcela-calc { display: none; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--ac); }
-
-        .fab { position: fixed; bottom: 35px; left: 50%; transform: translateX(-50%); width: 68px; height: 68px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 36px; z-index: 100; cursor: pointer; box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
-        .fab:active { transform: translateX(-50%) scale(0.95); }
-
-        .btn-primary { width: 100%; padding: 16px; margin-top: 20px; background: var(--ac); border: none; border-radius: 12px; color: white; font-weight: 800; font-size: 15px; cursor: pointer; }
-        .btn-primary:active { opacity: 0.85; }
-        .btn-ghost { width: 100%; background: none; border: none; color: var(--t3); margin-top: 10px; padding: 12px; cursor: pointer; font-size: 14px; }
-
-        .swipe-hint { font-size: 11px; color: var(--t3); text-align: center; margin-bottom: 12px; }
-
-        @keyframes pulseAlert {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.75; }
-        }
-        .card-alert { animation: pulseAlert 2.5s ease-in-out infinite; }
-
-        #alert-banner { display: none; margin-bottom: 16px; }
-
-        /* Modal de confirmação retroativa */
-        #modal-retro .modal-box {
-            max-width: 340px;
-            text-align: center;
-        }
-        #retro-msg {
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--t1);
-            white-space: pre-line;
-            margin: 16px 0 24px;
-        }
-        .retro-btns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .retro-btns button {
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        #retro-sim { background: var(--ok); color: white; }
-        #retro-nao { background: var(--z4); color: var(--t2); }
-        #retro-sim:active { opacity: 0.85; }
-        #retro-nao:active { opacity: 0.85; }
-    </style>
-</head>
-<body>
-    <!-- LOCK SCREEN -->
-    <div id="lock-screen">
-        <div style="width: 100%; max-width: 320px; text-align: center;">
-            <h1 style="margin-bottom: 8px; font-size: 28px;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
-            <p style="color:var(--t3); font-size:13px; margin-bottom:24px;">Controle financeiro seguro</p>
-            <input type="password" id="main-login-pwd" placeholder="SENHA" style="text-align: center; letter-spacing: 8px; font-size: 22px;">
-            <button onclick="checkLogin(); requestNotifPermission();" class="btn-primary">ACESSAR</button>
-        </div>
-    </div>
-
-    <!-- APP -->
-    <div id="app">
-        <div id="install-row">
-            <span style="font-size: 13px; font-weight: 700;">Instalar App?</span>
-            <button onclick="installApp()" style="background: var(--ac); border: none; padding: 8px 16px; border-radius: 8px; color: white; font-weight: 800;">INSTALAR</button>
-        </div>
-
-        <div class="dashboard">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span style="font-size: 12px; color: var(--t3); font-weight: 800;">TOTAL DE INFRA</span>
-                <button onclick="logout()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:var(--err); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:800; cursor:pointer; letter-spacing:0.05em;">SAIR</button>
-            </div>
-            <div id="total-geral" class="total-valor">R$ 0,00</div>
-            <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width:0%"></div></div>
-        </div>
-
-        <div class="swipe-hint">Toque no card para registrar pagamento</div>
-
-        <div id="alert-banner"></div>
-
-        <div id="notes-list"></div>
-        <button class="fab" onclick="openModal('modal-add')">+</button>
-    </div>
-
-    <!-- MODAL: NOVO REGISTRO -->
-    <div class="modal" id="modal-add">
-        <div class="modal-box">
-            <h3 style="margin-bottom:4px;">Novo Registro</h3>
-            <p style="font-size:12px; color:var(--t3);">Preencha os dados da despesa</p>
-
-            <label class="field-label">Descrição *</label>
-            <input type="text" id="in-nome" placeholder="Ex: Notebook Dell, Empréstimo CEF...">
-
-            <label class="field-label">Valor original (sem taxas)</label>
-            <input type="number" id="in-valor1" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
-
-            <label class="field-label">Total com taxas / juros *</label>
-            <input type="number" id="in-valor2" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                <div>
-                    <label class="field-label">Parcelas</label>
-                    <select id="in-parcelas"></select>
-                </div>
-                <div>
-                    <label class="field-label">Categoria</label>
-                    <select id="in-cat">
-                        <option value="Infraestrutura">🏠 Infraestrutura</option>
-                        <option value="Hardware">💻 Hardware</option>
-                        <option value="Empréstimo">💸 Empréstimo</option>
-                        <option value="Assinatura">🔄 Assinatura</option>
-                        <option value="Saúde">🏥 Saúde</option>
-                        <option value="Veículo">🚗 Veículo</option>
-                        <option value="Educação">🎓 Educação</option>
-                        <option value="Alimentação">🍽️ Alimentação</option>
-                        <option value="Lazer">🎮 Lazer</option>
-                        <option value="Outros">📦 Outros</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="in-parcela-calc"></div>
-
-            <label class="field-label">Iniciou em (mês/ano) — opcional</label>
-            <input type="month" id="in-inicio" placeholder="Ex: 2025-02">
-            <div id="in-inicio-info" style="display:none; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:10px 14px; margin-top:8px; font-size:13px; font-weight:700; color:#22c55e;"></div>
-
-            <label class="field-label">Data de pagamento</label>
-            <input type="date" id="in-data">
-
-            <button onclick="saveNote()" class="btn-primary">GRAVAR</button>
-            <button onclick="closeModal('modal-add')" class="btn-ghost">Voltar</button>
-        </div>
-    </div>
-
-    <!-- MODAL: EDITAR REGISTRO -->
-    <div class="modal" id="modal-edit">
-        <div class="modal-box">
-            <h3 style="margin-bottom:4px;">✏️ Editar Registro</h3>
-            <p style="font-size:12px; color:var(--t3);">Ajuste os dados e parcelas</p>
-
-            <div id="edit-info"></div>
-
-            <label class="field-label">Descrição *</label>
-            <input type="text" id="edit-nome" placeholder="Descrição">
-
-            <label class="field-label">Total com taxas / juros *</label>
-            <input type="number" id="edit-total" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                <div>
-                    <label class="field-label">Parcelas pagas</label>
-                    <input type="number" id="edit-pagas" min="0" step="1" inputmode="numeric">
-                </div>
-                <div>
-                    <label class="field-label">Total de parcelas</label>
-                    <input type="number" id="edit-parcelas-total" min="1" max="48" step="1" inputmode="numeric">
-                </div>
-            </div>
-
-            <label class="field-label">Categoria</label>
-            <select id="edit-cat">
-                <option value="Infraestrutura">🏠 Infraestrutura</option>
-                <option value="Hardware">💻 Hardware</option>
-                <option value="Empréstimo">💸 Empréstimo</option>
-                <option value="Assinatura">🔄 Assinatura</option>
-                <option value="Saúde">🏥 Saúde</option>
-                <option value="Veículo">🚗 Veículo</option>
-                <option value="Educação">🎓 Educação</option>
-                <option value="Alimentação">🍽️ Alimentação</option>
-                <option value="Lazer">🎮 Lazer</option>
-                <option value="Outros">📦 Outros</option>
-            </select>
-
-            <label class="field-label">Data de vencimento (próxima parcela)</label>
-            <input type="date" id="edit-data">
-
-            <button onclick="saveEdit()" class="btn-primary">SALVAR ALTERAÇÕES</button>
-            <button onclick="closeModal('modal-edit')" class="btn-ghost">Cancelar</button>
-        </div>
-    </div>
-
-    <!-- MODAL: CONFIRMAR SENHA -->
-    <div class="modal" id="modal-pwd">
-        <div class="modal-box" style="max-width:320px; text-align:center;">
-            <h3 id="pwd-title">Confirmar</h3>
-            <input type="password" id="confirm-pwd" placeholder="••••••" style="text-align:center; font-size:28px; letter-spacing:6px; margin-top:20px;">
-            <button id="pwd-confirm-btn" style="width:100%; padding:18px; margin-top:20px; background:var(--ok); border:none; border-radius:14px; color:white; font-weight:800; font-size:15px; cursor:pointer;">VALIDAR</button>
-            <button onclick="closeModal('modal-pwd')" class="btn-ghost">Abortar</button>
-        </div>
-    </div>
-
-    <!-- MODAL: CONFIRMAÇÃO PARCELA RETROATIVA -->
-    <div class="modal" id="modal-retro" style="z-index: 10001;">
-        <div class="modal-box" style="max-width:340px; text-align:center;">
-            <div style="font-size:32px; margin-bottom:4px;">📅</div>
-            <h3 style="font-size:16px;">Parcela Retroativa</h3>
-            <p id="retro-msg" style="font-size:14px; line-height:1.6; color:var(--t2); white-space:pre-line; margin:16px 0 24px;"></p>
-            <div class="retro-btns">
-                <button id="retro-sim">✅ Já paguei</button>
-                <button id="retro-nao">❌ Ainda não</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
-</body>
-</html>
+// Adicione este listener logo abaixo da função para o "Enter" do celular funcionar
+document.getElementById('main-login-pwd')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        checkLogin();
+        // Chama permissão de notificação como você configurou no botão do index
+        if (typeof requestNotifPermission === 'function') requestNotifPermission();
+    }
+});
