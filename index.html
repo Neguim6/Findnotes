@@ -1,153 +1,106 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d0d0f" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="manifest.json">
-    <title>FinNotes Pro</title>
-    <style>
-        /* MANTIDO TODO O SEU CSS ORIGINAL ABAIXO */
-        :root {
-            --bg: #0d0d0f; --card: #16161a; --border: #2a2a35;
-            --text: #ffffff; --text-dim: #94a3b8; --accent: #3b82f6;
-            --danger: #ef4444; --success: #22c55e;
-            --infra: #8b5cf6; --hardware: #3b82f6; --assinatura: #10b981; --outros: #f59e0b;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); line-height: 1.5; overflow-x: hidden; }
-        .app-shell { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 40px; }
-        .app-header { background: rgba(13, 13, 15, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
-        .header-inner { max-width: 600px; margin: 0 auto; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-        .logo em { color: var(--accent); font-style: normal; }
-        .main-content { max-width: 600px; margin: 0 auto; width: 100%; padding: 20px; }
-        .dashboard { margin-bottom: 30px; }
-        .total-card { background: linear-gradient(135deg, #1e1e26 0%, #16161a 100%); border: 1px solid var(--border); border-radius: 24px; padding: 24px; position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .card-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px; }
-        .card-value { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; }
-        .card-sub { font-size: 13px; color: var(--success); font-weight: 500; }
-        .card-glow { position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: var(--accent); filter: blur(80px); opacity: 0.15; pointer-events: none; }
-        section { margin-bottom: 32px; }
-        .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-        .section-header h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
-        .section-line { height: 1px; background: var(--border); width: 100%; }
-        .form-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .col-span-2 { grid-column: span 2; }
-        .field-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; margin-left: 4px; }
-        input, select { width: 100%; background: #0d0d0f; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; color: var(--text); font-size: 15px; transition: all 0.2s; }
-        input:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .form-actions { margin-top: 20px; }
-        .btn-save { background: var(--accent); color: white; border: none; border-radius: 14px; padding: 14px 24px; font-size: 15px; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
-        .btn-save:active { transform: scale(0.98); opacity: 0.9; }
-        .notes-list { display: grid; gap: 12px; }
-        .note-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; align-items: center; gap: 16px; position: relative; }
-        .note-cat-bar { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
-        .cat-infraestrutura { background: var(--infra); }
-        .cat-hardware { background: var(--hardware); }
-        .cat-assinatura { background: var(--assinatura); }
-        .cat-outros { background: var(--outros); }
-        .note-body { flex-grow: 1; min-width: 0; }
-        .note-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
-        .note-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .note-cat-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.05); color: var(--text-dim); }
-        .note-financials { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); }
-        .note-parcelas { color: var(--accent); font-weight: 700; }
-        .note-actions { display: flex; gap: 8px; }
-        .btn-delete { background: none; border: 1px solid var(--border); color: var(--danger); width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .btn-clear { background: none; border: none; color: var(--text-dim); font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px; }
-    </style>
-</head>
-<body>
-    <div id="lock-screen" style="position: fixed; inset: 0; background: #0d0d0f; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
-        <div style="width: 100%; max-width: 320px; text-align: center;">
-            <h1 style="color:white; margin-bottom: 8px;">FinNotes <span style="color:#3b82f6">Pro</span></h1>
-            <input type="password" id="main-login-pwd" placeholder="SENHA" style="text-align: center; letter-spacing: 8px; font-size: 22px; width: 100%; padding: 15px; background: #1a1a20; border: 1px solid #2a2a35; color: white; border-radius: 12px; margin-bottom: 20px;">
-            <button onclick="checkLogin()" class="btn-save" style="width: 100%; justify-content: center;">ACESSAR</button>
-        </div>
-    </div>
+'use strict';
 
-    <div id="app" class="app-shell" style="display: none;">
-        <header class="app-header">
-            <div class="header-inner">
-                <div class="logo"><span class="logo-icon">💠</span> FinNotes <em>Pro</em></div>
-                <button onclick="logout()" class="btn-clear">Sair</button>
-            </div>
-        </header>
+const K_ENC = "MjU4NDU2";
+let notes = [];
+let editingNoteId = null;
 
-        <main class="main-content">
-            <div class="dashboard">
-                <div class="total-card">
-                    <div class="card-label">Total em Aberto</div>
-                    <div id="total-geral" class="card-value">R$ 0,00</div>
-                    <div class="card-sub" id="status-pagamento">0 parcelas restantes</div>
-                    <div class="card-glow"></div>
-                </div>
-            </div>
+const getK = () => atob(K_ENC);
 
-            <section>
-                <div class="section-header">
-                    <h2>Novo Registro</h2>
-                    <div class="section-line"></div>
-                </div>
-                <div class="form-card">
-                    <div class="form-grid">
-                        <div class="field-group col-span-2">
-                            <label>Descrição</label>
-                            <input type="text" id="in-nome" placeholder="Ex: Servidor Dell">
-                        </div>
-                        <div class="field-group">
-                            <label>Valor Total</label>
-                            <input type="number" id="in-valor" step="0.01" placeholder="0,00">
-                        </div>
-                        <div class="field-group">
-                            <label>Parcelas</label>
-                            <input type="number" id="in-parcelas" value="1" min="1">
-                        </div>
-                        <div class="field-group col-span-2">
-                            <label>Categoria</label>
-                            <select id="in-cat">
-                                <option value="infraestrutura">🏠 Infraestrutura</option>
-                                <option value="hardware">💻 Hardware</option>
-                                <option value="assinatura">🔄 Assinatura</option>
-                                <option value="outros">📦 Outros</option>
-                            </select>
-                        </div>
-                        <div class="field-group col-span-2">
-                            <label>Data Vencimento</label>
-                            <input type="date" id="in-data">
-                        </div>
+function checkLogin() {
+    const pwd = document.getElementById('main-login-pwd').value;
+    if (pwd === getK()) {
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        render();
+    } else { alert("SENHA INCORRETA"); }
+}
+
+function logout() { location.reload(); }
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function sync() {
+    localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
+    render();
+}
+
+function saveNote() {
+    const nome = document.getElementById('in-nome').value.trim();
+    // CORREÇÃO: Capturando o valor com taxas (in-valor2) conforme seu HTML
+    const total = parseFloat(document.getElementById('in-valor2').value);
+    const parcelas = parseInt(document.getElementById('in-parcelas').value) || 1;
+    const dataVenc = document.getElementById('in-data').value;
+
+    if (!nome || isNaN(total)) {
+        alert('Preencha os campos obrigatórios.');
+        return;
+    }
+
+    notes.unshift({
+        id: Date.now(),
+        nome,
+        total,
+        parcelas,
+        pagas: 0,
+        cat: document.getElementById('in-cat').value,
+        dataVenc: dataVenc || null
+    });
+
+    sync();
+    closeModal('modal-add');
+}
+
+function saveEdit() {
+    const idx = notes.findIndex(n => n.id === editingNoteId);
+    if (idx === -1) return;
+    
+    notes[idx].pagas = parseInt(document.getElementById('edit-pagas').value);
+    notes[idx].parcelas = parseInt(document.getElementById('edit-parcelas-total').value);
+    
+    sync();
+    closeModal('modal-edit');
+}
+
+function render() {
+    const list = document.getElementById('notes-list');
+    list.innerHTML = '';
+    let totalAberto = 0;
+
+    notes.forEach(n => {
+        // CORREÇÃO: Lógica de cálculo proporcional para parcelas
+        const valorParcela = n.total / n.parcelas;
+        const restante = n.total - (n.pagas * valorParcela);
+        if (n.pagas < n.parcelas) totalAberto += restante;
+
+        const container = document.createElement('div');
+        container.className = 'card-container';
+        container.innerHTML = `
+            <div class="card" style="--color: var(--ac)">
+                <div style="display:flex; justify-content:space-between;">
+                    <div>
+                        <b style="font-size:16px">${n.nome}</b><br>
+                        <small style="color:var(--t3)">PARCELA ${n.pagas}/${n.parcelas}</small>
                     </div>
-                    <div class="form-actions">
-                        <button onclick="saveNote()" class="btn-save"><span class="btn-icon">+</span> Gravar</button>
+                    <div style="text-align:right">
+                        <b>R$ ${restante.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</b><br>
+                        <small style="color:var(--t3)">${n.parcelas}x R$ ${valorParcela.toFixed(2)}</small>
                     </div>
                 </div>
-            </section>
-
-            <section>
-                <div class="section-header">
-                    <h2>Registros</h2>
-                    <div class="section-line"></div>
+                <div class="progress-bg">
+                    <div class="progress-fill" style="width:${(n.pagas / n.parcelas) * 100}%"></div>
                 </div>
-                <div id="notes-list" class="notes-list"></div>
-            </section>
-        </main>
-    </div>
+                <div style="margin-top:10px; display:flex; gap:10px">
+                   <button onclick="editingNoteId=${n.id}; openModal('modal-edit')" style="background:none; border:1px solid var(--z4); color:var(--t2); padding:4px 8px; border-radius:6px; font-size:10px">EDITAR</button>
+                </div>
+            </div>
+        `;
+        list.appendChild(container);
+    });
 
-    <div class="modal" id="modal-edit" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px);">
-        <div class="form-card" style="width: 100%; max-width: 400px;">
-            <h3 style="margin-bottom:15px">Editar Pagamento</h3>
-            <div class="field-group">
-                <label>Parcelas Pagas</label>
-                <input type="number" id="edit-pagas">
-            </div><br>
-            <button onclick="saveEdit()" class="btn-save" style="width:100%; justify-content:center;">Salvar</button>
-            <button onclick="closeModal('modal-edit')" class="btn-clear" style="width:100%; margin-top:10px; color:var(--danger)">Cancelar</button>
-        </div>
-    </div>
+    document.getElementById('total-geral').innerText = `R$ ${totalAberto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+}
 
-    <script src="script.js"></script>
-</body>
-</html>
+// Inicialização
+const saved = localStorage.getItem('finnotes_v12_data');
+if (saved) notes = JSON.parse(saved);
