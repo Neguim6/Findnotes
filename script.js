@@ -401,7 +401,9 @@ document.getElementById('confirm-pwd').addEventListener('keydown', (e) => {
 
 function validateAuth() {
     const pwd = document.getElementById('confirm-pwd').value;
+
     if (pwd === getK()) {
+
         if (pendingAction.type === 'pay') {
             notes = notes.map(n => {
                 if (n.id === pendingAction.id && n.pagas < n.parcelas) n.pagas += 1;
@@ -410,15 +412,18 @@ function validateAuth() {
         } else {
             notes = notes.filter(n => n.id !== pendingAction.id);
         }
+
         sync();
-        closeModal('modal-pwd'); // FIX: fecha a tela após validar com sucesso
+
+        // 🔥 FECHAMENTO GARANTIDO DE TODAS AS TELAS
+        document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+
     } else {
         alert("SENHA INCORRETA");
         document.getElementById('confirm-pwd').value = '';
         document.getElementById('confirm-pwd').focus();
     }
 }
-
 function sync() {
     localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
     saveNotesToIDB(notes);
