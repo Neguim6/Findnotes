@@ -1,3 +1,10 @@
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(granted => {
+    if (granted) console.log("Armazenamento persistente garantido");
+    else console.log("O sistema pode apagar os dados se faltar espaço");
+  });
+}
+
 'use strict';
 
 // 1. PWA & AUTO-UPDATE
