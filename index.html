@@ -12,7 +12,7 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
             --z: #09090b; --z1: #111113; --z2: #18181b; --z3: #1f1f23;
-            --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a; 
+            --z4: #27272a; --t1: #fafafa; --t2: #a1a1aa; --t3: #71717a;
             --ac: #3b82f6; --ok: #22c55e; --err: #ef4444;
             --r: 16px; --ff: 'Segoe UI', Roboto, sans-serif;
         }
@@ -30,12 +30,9 @@
         .total-valor { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
 
         .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); background: var(--err); }
-        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px 90px 20px 20px; position: relative; z-index: 2; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); touch-action: pan-y; user-select: none; }
+        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px 20px 20px 20px; position: relative; z-index: 2; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); touch-action: pan-y; user-select: none; }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color); border-radius: var(--r) 0 0 var(--r); }
         .card.completed { opacity: 0.4; }
-
-        .btn-del-fixo { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: rgba(239, 68, 68, 0.15); color: var(--err); border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px 12px; border-radius: 10px; font-size: 10px; font-weight: 900; z-index: 10; cursor: pointer; }
-        .btn-del-fixo:active { background: rgba(239, 68, 68, 0.3); }
 
         .progress-bg { height: 8px; background: var(--z3); border-radius: 99px; margin-top: 15px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ac); transition: width 0.8s ease; }
@@ -60,10 +57,8 @@
         .btn-primary:active { opacity: 0.85; }
         .btn-ghost { width: 100%; background: none; border: none; color: var(--t3); margin-top: 10px; padding: 12px; cursor: pointer; font-size: 14px; }
 
-        /* Swipe hint */
         .swipe-hint { font-size: 11px; color: var(--t3); text-align: center; margin-bottom: 12px; }
 
-        /* Alert pulse animation */
         @keyframes pulseAlert {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.75; }
@@ -71,6 +66,36 @@
         .card-alert { animation: pulseAlert 2.5s ease-in-out infinite; }
 
         #alert-banner { display: none; margin-bottom: 16px; }
+
+        /* Modal de confirmação retroativa */
+        #modal-retro .modal-box {
+            max-width: 340px;
+            text-align: center;
+        }
+        #retro-msg {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--t1);
+            white-space: pre-line;
+            margin: 16px 0 24px;
+        }
+        .retro-btns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .retro-btns button {
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #retro-sim { background: var(--ok); color: white; }
+        #retro-nao { background: var(--z4); color: var(--t2); }
+        #retro-sim:active { opacity: 0.85; }
+        #retro-nao:active { opacity: 0.85; }
     </style>
 </head>
 <body>
@@ -147,11 +172,62 @@
 
             <div id="in-parcela-calc"></div>
 
+            <label class="field-label">Iniciou em (mês/ano) — opcional</label>
+            <input type="month" id="in-inicio" placeholder="Ex: 2025-02">
+            <div id="in-inicio-info" style="display:none; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:10px 14px; margin-top:8px; font-size:13px; font-weight:700; color:#22c55e;"></div>
+
             <label class="field-label">Data de pagamento</label>
             <input type="date" id="in-data">
 
             <button onclick="saveNote()" class="btn-primary">GRAVAR</button>
             <button onclick="closeModal('modal-add')" class="btn-ghost">Voltar</button>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR REGISTRO -->
+    <div class="modal" id="modal-edit">
+        <div class="modal-box">
+            <h3 style="margin-bottom:4px;">✏️ Editar Registro</h3>
+            <p style="font-size:12px; color:var(--t3);">Ajuste os dados e parcelas</p>
+
+            <div id="edit-info"></div>
+
+            <label class="field-label">Descrição *</label>
+            <input type="text" id="edit-nome" placeholder="Descrição">
+
+            <label class="field-label">Total com taxas / juros *</label>
+            <input type="number" id="edit-total" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div>
+                    <label class="field-label">Parcelas pagas</label>
+                    <input type="number" id="edit-pagas" min="0" step="1" inputmode="numeric">
+                </div>
+                <div>
+                    <label class="field-label">Total de parcelas</label>
+                    <input type="number" id="edit-parcelas-total" min="1" max="48" step="1" inputmode="numeric">
+                </div>
+            </div>
+
+            <label class="field-label">Categoria</label>
+            <select id="edit-cat">
+                <option value="Infraestrutura">🏠 Infraestrutura</option>
+                <option value="Hardware">💻 Hardware</option>
+                <option value="Empréstimo">💸 Empréstimo</option>
+                <option value="Assinatura">🔄 Assinatura</option>
+                <option value="Saúde">🏥 Saúde</option>
+                <option value="Veículo">🚗 Veículo</option>
+                <option value="Educação">🎓 Educação</option>
+                <option value="Alimentação">🍽️ Alimentação</option>
+                <option value="Lazer">🎮 Lazer</option>
+                <option value="Outros">📦 Outros</option>
+            </select>
+
+            <label class="field-label">Data de vencimento (próxima parcela)</label>
+            <input type="date" id="edit-data">
+
+            <button onclick="saveEdit()" class="btn-primary">SALVAR ALTERAÇÕES</button>
+            <button onclick="closeModal('modal-edit')" class="btn-ghost">Cancelar</button>
         </div>
     </div>
 
@@ -162,6 +238,19 @@
             <input type="password" id="confirm-pwd" placeholder="••••••" style="text-align:center; font-size:28px; letter-spacing:6px; margin-top:20px;">
             <button id="pwd-confirm-btn" style="width:100%; padding:18px; margin-top:20px; background:var(--ok); border:none; border-radius:14px; color:white; font-weight:800; font-size:15px; cursor:pointer;">VALIDAR</button>
             <button onclick="closeModal('modal-pwd')" class="btn-ghost">Abortar</button>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAÇÃO PARCELA RETROATIVA -->
+    <div class="modal" id="modal-retro" style="z-index: 10001;">
+        <div class="modal-box" style="max-width:340px; text-align:center;">
+            <div style="font-size:32px; margin-bottom:4px;">📅</div>
+            <h3 style="font-size:16px;">Parcela Retroativa</h3>
+            <p id="retro-msg" style="font-size:14px; line-height:1.6; color:var(--t2); white-space:pre-line; margin:16px 0 24px;"></p>
+            <div class="retro-btns">
+                <button id="retro-sim">✅ Já paguei</button>
+                <button id="retro-nao">❌ Ainda não</button>
+            </div>
         </div>
     </div>
 
