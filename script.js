@@ -22,28 +22,7 @@ async function installApp() {
     }
 }
 
-// ─── INDEXEDDB ─────────────────────────────────────────
-function saveNotesToIDB(notes) {
-    return new Promise((resolve) => {
-        const req = indexedDB.open('finnotes_db', 1);
-        req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
-        req.onsuccess = (e) => {
-            const db = e.target.result;
-            const tx = db.transaction('kv', 'readwrite');
-            tx.objectStore('kv').put(notes, 'notes');
-            tx.oncomplete = () => resolve();
-        };
-        req.onerror = () => resolve();
-    });
-}
-
-async function notifySwToCheck(notes) {
-    if (!('serviceWorker' in navigator)) return;
-    const reg = await navigator.serviceWorker.ready;
-    if (reg.active) reg.active.postMessage({ type: 'CHECK_ALERTS', notes });
-}
-
-// ─── BASE ─────────────────────────────────────────────
+// ─── BANCO ─────────────────────────────────────────
 const K_ENC = "MjU4NDU2";
 let notes = [];
 let pendingAction = { id: null, type: null };
@@ -51,12 +30,24 @@ let editingNoteId = null;
 
 const getK = () => atob(K_ENC);
 
-// ─── MODAIS (PADRÃO NOVO) ─────────────────────────────
-function fecharTodosModais() {
-    document.querySelectorAll('.modal.active')
-        .forEach(m => m.classList.remove('active'));
+// ─── LOGIN ─────────────────────────────────────────
+function checkLogin() {
+    const pwdInput = document.getElementById('main-login-pwd');
+    if (pwdInput.value === getK()) {
+        unlockApp();
+    } else {
+        alert("SENHA INCORRETA");
+        pwdInput.value = '';
+    }
 }
 
+function unlockApp() {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    render();
+}
+
+// ─── MODAIS ────────────────────────────────────────
 function openModal(id) {
     document.getElementById(id).classList.add('active');
 }
@@ -65,25 +56,19 @@ function closeModal(id) {
     document.getElementById(id).classList.remove('active');
 }
 
-// ─── LOGIN ────────────────────────────────────────────
-function checkLogin() {
-    const pwdInput = document.getElementById('main-login-pwd');
-    if (pwdInput.value === getK()) {
-        document.getElementById('lock-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-    } else {
-        alert("SENHA INCORRETA");
-    }
+// 🔥 FECHAMENTO GLOBAL
+function fecharTodosModais() {
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
 }
 
-// ─── SAVE NOTE ────────────────────────────────────────
+// ─── CRUD ──────────────────────────────────────────
 function saveNote() {
-    const nome = document.getElementById('in-nome').value.trim();
+    const nome = document.getElementById('in-nome').value;
     const total = parseFloat(document.getElementById('in-valor2').value);
     const parcelas = parseInt(document.getElementById('in-parcelas').value);
 
     if (!nome || isNaN(total)) {
-        alert('Preencha os campos.');
+        alert('Preencha os dados');
         return;
     }
 
@@ -96,10 +81,9 @@ function saveNote() {
     });
 
     sync();
-    fecharTodosModais(); // 🔥 CORREÇÃO
+    closeModal('modal-add');
 }
 
-// ─── EDITAR ───────────────────────────────────────────
 function openEditModal(id) {
     const note = notes.find(n => n.id === id);
     if (!note) return;
@@ -114,32 +98,22 @@ function openEditModal(id) {
     openModal('modal-edit');
 }
 
+// 🔥 SALVAR + FECHAR
 function saveEdit() {
-    if (!editingNoteId) return;
+    const note = notes.find(n => n.id === editingNoteId);
+    if (!note) return;
 
-    const idx = notes.findIndex(n => n.id === editingNoteId);
-    if (idx === -1) return;
-
-    const nome = document.getElementById('edit-nome').value;
-    const total = parseFloat(document.getElementById('edit-total').value);
-    const pagas = parseInt(document.getElementById('edit-pagas').value);
-    const parcelas = parseInt(document.getElementById('edit-parcelas-total').value);
-
-    notes[idx] = {
-        ...notes[idx],
-        nome,
-        total,
-        parcelas,
-        pagas
-    };
+    note.nome = document.getElementById('edit-nome').value;
+    note.total = parseFloat(document.getElementById('edit-total').value);
+    note.pagas = parseInt(document.getElementById('edit-pagas').value);
+    note.parcelas = parseInt(document.getElementById('edit-parcelas-total').value);
 
     sync();
 
-    // 🔥 CORREÇÃO PRINCIPAL
-    fecharTodosModais();
+    fecharTodosModais(); // 🔥 FECHA TUDO
 }
 
-// ─── AUTH ─────────────────────────────────────────────
+// ─── AUTH ──────────────────────────────────────────
 function askAuth(id, type) {
     pendingAction = { id, type };
     openModal('modal-pwd');
@@ -151,72 +125,107 @@ function validateAuth() {
     if (pwd === getK()) {
 
         if (pendingAction.type === 'pay') {
-            notes = notes.map(n => {
+            notes.forEach(n => {
                 if (n.id === pendingAction.id && n.pagas < n.parcelas) {
                     n.pagas++;
                 }
-                return n;
             });
-        } else {
+        }
+
+        if (pendingAction.type === 'delete') {
             notes = notes.filter(n => n.id !== pendingAction.id);
         }
 
         sync();
 
-        // 🔥 FECHA TUDO
+        // 🔥 FECHA TODAS TELAS
         fecharTodosModais();
 
     } else {
-        alert("SENHA INCORRETA");
+        alert("Senha incorreta");
     }
 }
 
-// ─── PARCELAS ─────────────────────────────────────────
+// ─── NOVO: SELEÇÃO VISUAL DE PARCELAS ─────────────────
 function abrirSelecaoParcelas() {
-    if (!editingNoteId) return;
-
     const note = notes.find(n => n.id === editingNoteId);
     if (!note) return;
 
-    const qtd = prompt(`Você tem ${note.pagas} parcelas.\nQuantas remover?`);
-    const remover = parseInt(qtd);
+    if (note.pagas === 0) {
+        alert("Nenhuma parcela paga.");
+        return;
+    }
 
-    if (isNaN(remover) || remover <= 0) return;
+    let html = `<div id="box-parcelas">`;
 
-    note.pagas -= remover;
+    for (let i = 1; i <= note.pagas; i++) {
+        html += `
+            <label style="display:block; margin:5px 0;">
+                <input type="checkbox" value="${i}">
+                Parcela ${i}
+            </label>
+        `;
+    }
+
+    html += `</div>
+    <button onclick="removerParcelasSelecionadas()" class="btn-primary">
+        REMOVER SELECIONADAS
+    </button>`;
+
+    document.getElementById('edit-info').innerHTML = html;
+}
+
+// 🔥 REMOÇÃO MÚLTIPLA REAL
+function removerParcelasSelecionadas() {
+    const note = notes.find(n => n.id === editingNoteId);
+    if (!note) return;
+
+    const checks = document.querySelectorAll('#box-parcelas input:checked');
+
+    if (checks.length === 0) {
+        alert("Selecione ao menos uma parcela.");
+        return;
+    }
+
+    const qtd = checks.length;
+
+    if (qtd > note.pagas) {
+        alert("Erro na seleção.");
+        return;
+    }
+
+    note.pagas -= qtd;
 
     document.getElementById('edit-pagas').value = note.pagas;
 
     sync();
+
+    alert(`${qtd} parcela(s) removida(s) com sucesso`);
 }
 
-// ─── RENDER ───────────────────────────────────────────
+// ─── RENDER ─────────────────────────────────────────
 function render() {
     const list = document.getElementById('notes-list');
     list.innerHTML = '';
 
     notes.forEach(n => {
-        const el = document.createElement('div');
-        el.innerHTML = `
-            <div>
-                <b>${n.nome}</b>
-                <div>${n.pagas}/${n.parcelas}</div>
-                <button onclick="askAuth(${n.id}, 'pay')">Pagar</button>
-                <button onclick="openEditModal(${n.id})">Editar</button>
-                <button onclick="askAuth(${n.id}, 'delete')">Excluir</button>
-            </div>
+        const div = document.createElement('div');
+        div.className = 'card';
+
+        div.innerHTML = `
+            <b>${n.nome}</b><br>
+            ${n.pagas}/${n.parcelas}
+            <br><br>
+            <button onclick="openEditModal(${n.id})">Editar</button>
+            <button onclick="askAuth(${n.id}, 'delete')">Excluir</button>
         `;
-        list.appendChild(el);
+
+        list.appendChild(div);
     });
 }
 
+// ─── SYNC ───────────────────────────────────────────
 function sync() {
     localStorage.setItem('finnotes_v12_data', JSON.stringify(notes));
-    render();
-}
-
-// INIT
-if (localStorage.getItem('finnotes_v12_data')) {
-    notes = JSON.parse(localStorage.getItem('finnotes_v12_data'));
     render();
 }
