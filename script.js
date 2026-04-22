@@ -156,6 +156,27 @@ function calcParcela() {
 document.getElementById('in-valor2').addEventListener('input', calcParcela);
 document.getElementById('in-parcelas').addEventListener('change', calcParcela);
 
+// Calcula parcelas já pagas com base na data de início
+function calcPagas() {
+    const inicioVal = document.getElementById('in-inicio').value;
+    const parcelas = parseInt(document.getElementById('in-parcelas').value);
+    const infoEl = document.getElementById('in-inicio-info');
+
+    if (!inicioVal || isNaN(parcelas)) { infoEl.style.display = 'none'; return; }
+
+    const [anoI, mesI] = inicioVal.split('-').map(Number);
+    const hoje = new Date();
+    // Meses completos decorridos desde o mês de início até o mês anterior ao atual
+    const mesesDecorridos = (hoje.getFullYear() - anoI) * 12 + (hoje.getMonth() + 1 - mesI);
+    const pagas = Math.max(0, Math.min(mesesDecorridos, parcelas));
+
+    infoEl.textContent = `✅ ${pagas} parcela${pagas !== 1 ? 's' : ''} já paga${pagas !== 1 ? 's' : ''} (início em ${mesI.toString().padStart(2,'0')}/${anoI})`;
+    infoEl.style.display = 'block';
+}
+
+document.getElementById('in-inicio').addEventListener('change', calcPagas);
+document.getElementById('in-parcelas').addEventListener('change', calcPagas);
+
 function openModal(id) {
     document.getElementById(id).classList.add('active');
     if (id === 'modal-pwd') document.getElementById('confirm-pwd').focus();
@@ -169,7 +190,9 @@ function closeModal(id) {
         document.getElementById('in-valor2').value = '';
         document.getElementById('in-parcelas').value = '1';
         document.getElementById('in-data').value = '';
+        document.getElementById('in-inicio').value = '';
         document.getElementById('in-parcela-calc').style.display = 'none';
+        document.getElementById('in-inicio-info').style.display = 'none';
     }
     if (id === 'modal-pwd') {
         document.getElementById('confirm-pwd').value = '';
@@ -184,10 +207,21 @@ function saveNote() {
     const valorOriginal = parseFloat(document.getElementById('in-valor1').value);
     const total = parseFloat(document.getElementById('in-valor2').value);
     const dataVenc = document.getElementById('in-data').value;
+    const inicioVal = document.getElementById('in-inicio').value;
+    const parcelas = parseInt(document.getElementById('in-parcelas').value);
 
     if (!nome || isNaN(total)) {
         alert('Preencha ao menos a descrição e o total com taxas.');
         return;
+    }
+
+    // Calcula parcelas já pagas se o usuário informou data de início
+    let pagas = 0;
+    if (inicioVal) {
+        const [anoI, mesI] = inicioVal.split('-').map(Number);
+        const hoje = new Date();
+        const mesesDecorridos = (hoje.getFullYear() - anoI) * 12 + (hoje.getMonth() + 1 - mesI);
+        pagas = Math.max(0, Math.min(mesesDecorridos, parcelas));
     }
 
     notes.unshift({
@@ -195,9 +229,9 @@ function saveNote() {
         nome,
         valorOriginal: isNaN(valorOriginal) ? null : valorOriginal,
         total,
-        parcelas: parseInt(document.getElementById('in-parcelas').value),
+        parcelas,
         cat: document.getElementById('in-cat').value,
-        pagas: 0,
+        pagas,
         dataVenc: dataVenc || null
     });
     sync();
