@@ -599,3 +599,32 @@ function render() {
 }
 
 if (localStorage.getItem('finnotes_v12_data')) render();
+function abrirSelecaoParcelas() {
+    if (!editingNoteId) return;
+
+    const note = notes.find(n => n.id === editingNoteId);
+    if (!note) return;
+
+    if (note.pagas === 0) {
+        alert('Nenhuma parcela paga para remover.');
+        return;
+    }
+
+    const qtd = prompt(`Você tem ${note.pagas} parcela(s) paga(s).\nQuantas deseja remover?`);
+
+    const remover = parseInt(qtd);
+
+    if (isNaN(remover) || remover <= 0) return;
+
+    if (remover > note.pagas) {
+        alert('Não é possível remover mais parcelas do que já foram pagas.');
+        return;
+    }
+
+    note.pagas -= remover;
+
+    document.getElementById('edit-pagas').value = note.pagas;
+
+    atualizarInfoEdicao(note);
+    sync();
+}
