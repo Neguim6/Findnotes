@@ -6,10 +6,6 @@ let editingNoteId = null;
 
 const getK = () => atob(K_ENC);
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js');
-}
-
 function checkLogin() {
     const pwd = document.getElementById('main-login-pwd').value;
     if (pwd === getK()) {
@@ -30,9 +26,9 @@ function sync() {
 
 function saveNote() {
     const nome = document.getElementById('in-nome').value.trim();
-    // CORREÇÃO: Referência ao ID correto 'in-valor'
+    // CORREÇÃO: ID unificado 'in-valor'
     const total = parseFloat(document.getElementById('in-valor').value);
-    // CORREÇÃO: Referência ao ID correto 'in-parcelas'
+    // CORREÇÃO: ID unificado 'in-parcelas'
     const parcelas = parseInt(document.getElementById('in-parcelas').value) || 1;
     const dataVenc = document.getElementById('in-data').value;
 
@@ -52,8 +48,8 @@ function saveNote() {
     });
 
     sync();
+    // Limpeza dos campos
     document.getElementById('in-nome').value = '';
-    // CORREÇÃO: Limpeza do campo correto
     document.getElementById('in-valor').value = '';
     document.getElementById('in-parcelas').value = '1';
 }
@@ -73,8 +69,8 @@ function closeModal(id) {
 function saveEdit() {
     const idx = notes.findIndex(n => n.id === editingNoteId);
     if (idx === -1) return;
-    // CORREÇÃO: Garante que as pagas não ultrapassem o total de parcelas
     const novasPagas = parseInt(document.getElementById('edit-pagas').value);
+    // CORREÇÃO: Impede que pagas > parcelas
     notes[idx].pagas = Math.min(novasPagas, notes[idx].parcelas);
     sync();
     closeModal('modal-edit');
@@ -93,7 +89,7 @@ function render() {
     let totalAberto = 0;
 
     notes.forEach(n => {
-        // CORREÇÃO: Restauração do cálculo matemático das parcelas
+        // CORREÇÃO: Restauração da lógica de cálculo de parcelas
         const valorParcela = n.total / n.parcelas;
         const restante = n.total - (n.pagas * valorParcela);
         if (n.pagas < n.parcelas) totalAberto += restante;
@@ -108,20 +104,19 @@ function render() {
                     <span class="note-cat-badge badge-${n.cat}">${n.cat}</span>
                 </div>
                 <div class="note-financials">
-                    <span class="note-parcelas">${n.pagas}/${n.parcelas} parcelas</span>
-                    <span class="note-valor-total">Total: R$ ${n.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                    <span class="note-valor-parcela">${n.parcelas}x R$ ${valorParcela.toFixed(2)}</span>
+                    <span class="note-parcelas">${n.pagas}/${n.parcelas}</span>
+                    <span>R$ ${restante.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                 </div>
             </div>
             <div class="note-actions">
-                <button onclick="openEditModal(${n.id})" class="btn-delete" style="color:var(--accent); border-color:var(--accent); margin-right:8px;">✎</button>
+                <button onclick="openEditModal(${n.id})" class="btn-delete" style="color:var(--accent); border-color:var(--accent); margin-right:4px;">✎</button>
                 <button onclick="deleteNote(${n.id})" class="btn-delete">✕</button>
             </div>
         `;
         list.appendChild(card);
     });
 
-    // CORREÇÃO: Referência ao ID correto 'total-geral'
+    // CORREÇÃO: ID 'total-geral'
     document.getElementById('total-geral').innerText = `R$ ${totalAberto.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
 }
 
