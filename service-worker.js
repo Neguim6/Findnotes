@@ -1,16 +1,20 @@
 const CACHE = 'finnotes-v14';
-const ASSETS = ['./index.html', './script.js', './manifest.json'];
+const ASSETS = [
+  './',
+  './index.html',
+  './script.js',
+  './style.css',
+  './manifest.json'
+];
 
-// Instala: cacheia arquivos novos em background SEM interromper o app atual
+// Instala: cacheia arquivos novos em background
 self.addEventListener('install', (e) => {
-  // NÃO chama skipWaiting() aqui — deixa o SW antigo continuar rodando
-  // O novo SW só assume quando o usuário fechar e reabrir o app
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(ASSETS))
   );
 });
 
-// Ativa: limpa caches antigos e assume o controle
+// Ativa: limpa caches antigos
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -20,10 +24,7 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Network first com fallback cache:
-// - Sempre tenta buscar versão atualizada do servidor
-// - Se offline ou falhar, usa o cache
-// - Dados do usuário (localStorage/IDB) nunca são tocados pelo SW
+// Estratégia Network First: Garante que o celular busque o arquivo novo se tiver internet
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
@@ -36,13 +37,12 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(e.request)
         .then((res) => {
-          // Atualiza o cache com a versão nova silenciosamente
           if (res.ok) {
             caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
           }
           return res;
         })
-        .catch(() => caches.match(e.request)) // offline: usa cache
+        .catch(() => caches.match(e.request))
     );
   } else {
     e.respondWith(
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (e) => {
   }
 });
 
-// ─── NOTIFICAÇÕES EM BACKGROUND ──────────────────────────────────────────────
+// ─── NOTIFICAÇÕES EM BACKGROUND (Sua Lógica Original) ────────────────────────
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'CHECK_ALERTS') checkAndNotify(e.data.notes);
 });
@@ -73,7 +73,12 @@ self.addEventListener('notificationclick', (e) => {
 });
 
 async function checkFromStorage() {
-  try { const n = await getNotesFromIDB(); if (n) checkAndNotify(n); } catch (e) {}
+  try { 
+    const n = await getNotesFromIDB(); 
+    if (n) checkAndNotify(n); 
+  } catch (err) {
+    console.error("Erro no background check:", err);
+  }
 }
 
 function getDiffDias(dataVenc) {
@@ -87,23 +92,38 @@ async function checkAndNotify(notes) {
   if (!Array.isArray(notes)) return;
   for (const n of notes) {
     if (!n.dataVenc || n.pagas === n.parcelas) continue;
+    
     const diff = getDiffDias(n.dataVenc);
     const [ano,mes,dia] = n.dataVenc.split('-');
     const dataFmt = `${dia}/${mes}/${ano}`;
     const vp = `R$ ${(n.total/n.parcelas).toFixed(2)}`;
     const hoje = new Date().toISOString().slice(0,10);
     const tag = `finnotes-${n.id}-${hoje}`;
+    
     let titulo = null, corpo = null;
-    if (diff < 0)        { titulo='🚨 Conta Vencida!';                       corpo=`"${n.nome}" venceu em ${dataFmt}. Valor: ${vp}`; }
-    else if (diff === 0) { titulo='⚠️ Vence Hoje!';                          corpo=`"${n.nome}" vence hoje. Valor: ${vp}`; }
-    else if (diff <= 3)  { titulo=`🔔 Vence em ${diff} dia${diff>1?'s':''}`; corpo=`"${n.nome}" vence em ${dataFmt}. Valor: ${vp}`; }
+    
+    if (diff < 0) { 
+      titulo='🚨 Conta Vencida!'; 
+      corpo=`"${n.nome}" venceu em ${dataFmt}. Valor: ${vp}`; 
+    }
+    else if (diff === 0) { 
+      titulo='⚠️ Vence Hoje!'; 
+      corpo=`"${n.nome}" vence hoje. Valor: ${vp}`; 
+    }
+    else if (diff <= 3) { 
+      titulo=`🔔 Vence em ${diff} dia${diff>1?'s':''}`; 
+      corpo=`"${n.nome}" vence em ${dataFmt}. Valor: ${vp}`; 
+    }
+    
     if (titulo) {
       const ex = await self.registration.getNotifications({ tag });
       if (ex.length === 0) {
         await self.registration.showNotification(titulo, {
-          body: corpo, tag,
+          body: corpo, 
+          tag,
           icon: 'https://cdn-icons-png.flaticon.com/512/552/552791.png',
-          vibrate: [200,100,200], requireInteraction: diff <= 0,
+          vibrate: [200,100,200], 
+          requireInteraction: diff <= 0,
           data: { noteId: n.id }
         });
       }
@@ -116,7 +136,10 @@ function getNotesFromIDB() {
     const req = indexedDB.open('finnotes_db', 1);
     req.onupgradeneeded = (e) => { e.target.result.createObjectStore('kv'); };
     req.onsuccess = (e) => {
-      const get = e.target.result.transaction('kv','readonly').objectStore('kv').get('notes');
+      const db = e.target.result;
+      const tx = db.transaction('kv','readonly');
+      const store = tx.objectStore('kv');
+      const get = store.get('notes');
       get.onsuccess = () => resolve(get.result || null);
       get.onerror = () => reject(get.error);
     };
