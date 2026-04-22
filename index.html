@@ -1,6 +1,3 @@
-<button onclick="exportarBackup()" class="btn-ghost">Exportar Backup</button>
-<input type="file" id="importFile" style="display:none" onchange="importarBackup(event)">
-<button onclick="document.getElementById('importFile').click()" class="btn-ghost">Importar Backup</button>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -31,6 +28,11 @@
 
         .dashboard { background: var(--z2); padding: 25px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
         .total-valor { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
+
+        /* Estilo para os botões de backup no dashboard */
+        .backup-controls { display: flex; gap: 8px; margin-top: 15px; }
+        .btn-backup { flex: 1; background: var(--z3); border: 1px solid var(--z4); color: var(--t2); padding: 8px; border-radius: 10px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+        .btn-backup:active { background: var(--z4); }
 
         .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); background: var(--err); }
         .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px 20px 20px 20px; position: relative; z-index: 2; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); touch-action: pan-y; user-select: none; }
@@ -70,39 +72,15 @@
 
         #alert-banner { display: none; margin-bottom: 16px; }
 
-        /* Modal de confirmação retroativa */
-        #modal-retro .modal-box {
-            max-width: 340px;
-            text-align: center;
-        }
-        #retro-msg {
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--t1);
-            white-space: pre-line;
-            margin: 16px 0 24px;
-        }
-        .retro-btns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .retro-btns button {
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 14px;
-            cursor: pointer;
-        }
+        #modal-retro .modal-box { max-width: 340px; text-align: center; }
+        #retro-msg { font-size: 14px; line-height: 1.6; color: var(--t1); white-space: pre-line; margin: 16px 0 24px; }
+        .retro-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .retro-btns button { padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer; }
         #retro-sim { background: var(--ok); color: white; }
         #retro-nao { background: var(--z4); color: var(--t2); }
-        #retro-sim:active { opacity: 0.85; }
-        #retro-nao:active { opacity: 0.85; }
     </style>
 </head>
 <body>
-    <!-- LOCK SCREEN -->
     <div id="lock-screen">
         <div style="width: 100%; max-width: 320px; text-align: center;">
             <h1 style="margin-bottom: 8px; font-size: 28px;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
@@ -112,7 +90,6 @@
         </div>
     </div>
 
-    <!-- APP -->
     <div id="app">
         <div id="install-row">
             <span style="font-size: 13px; font-weight: 700;">Instalar App?</span>
@@ -126,6 +103,12 @@
             </div>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width:0%"></div></div>
+            
+            <div class="backup-controls">
+                <button onclick="exportarBackup()" class="btn-backup">📤 Exportar Backup</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn-backup">📥 Restaurar</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="importarBackup(event)">
+            </div>
         </div>
 
         <div class="swipe-hint">Toque no card para registrar pagamento</div>
@@ -136,7 +119,6 @@
         <button class="fab" onclick="openModal('modal-add')">+</button>
     </div>
 
-    <!-- MODAL: NOVO REGISTRO -->
     <div class="modal" id="modal-add">
         <div class="modal-box">
             <h3 style="margin-bottom:4px;">Novo Registro</h3>
@@ -187,7 +169,6 @@
         </div>
     </div>
 
-    <!-- MODAL: EDITAR REGISTRO -->
     <div class="modal" id="modal-edit">
         <div class="modal-box">
             <h3 style="margin-bottom:4px;">✏️ Editar Registro</h3>
@@ -234,7 +215,6 @@
         </div>
     </div>
 
-    <!-- MODAL: CONFIRMAR SENHA -->
     <div class="modal" id="modal-pwd">
         <div class="modal-box" style="max-width:320px; text-align:center;">
             <h3 id="pwd-title">Confirmar</h3>
@@ -244,12 +224,11 @@
         </div>
     </div>
 
-    <!-- MODAL: CONFIRMAÇÃO PARCELA RETROATIVA -->
     <div class="modal" id="modal-retro" style="z-index: 10001;">
-        <div class="modal-box" style="max-width:340px; text-align:center;">
+        <div class="modal-box">
             <div style="font-size:32px; margin-bottom:4px;">📅</div>
             <h3 style="font-size:16px;">Parcela Retroativa</h3>
-            <p id="retro-msg" style="font-size:14px; line-height:1.6; color:var(--t2); white-space:pre-line; margin:16px 0 24px;"></p>
+            <p id="retro-msg"></p>
             <div class="retro-btns">
                 <button id="retro-sim">✅ Já paguei</button>
                 <button id="retro-nao">❌ Ainda não</button>
