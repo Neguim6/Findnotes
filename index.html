@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#3b82f6" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,28 +20,80 @@
         body { background: var(--z); color: var(--t1); font-family: var(--ff); min-height: 100dvh; display: flex; justify-content: center; overflow-x: hidden; }
 
         #lock-screen { position: fixed; inset: 0; background: var(--z); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+
         #app { width: 100%; max-width: 500px; padding: 15px 15px 120px 15px; display: none; }
+
+        #install-row { display: none; background: var(--z2); padding: 15px; border-radius: var(--r); margin-bottom: 20px; border: 1px solid var(--ac); align-items: center; justify-content: space-between; animation: slideIn 0.5s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         .dashboard { background: var(--z2); padding: 25px; border-radius: var(--r); border: 1px solid var(--z3); margin-bottom: 20px; }
         .total-valor { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin: 5px 0; }
 
-        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px; position: relative; z-index: 2; cursor: pointer; touch-action: pan-y; }
+        .card-container { position: relative; margin-bottom: 12px; border-radius: var(--r); background: var(--err); }
+        .card { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 20px 20px 20px 20px; position: relative; z-index: 2; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); touch-action: pan-y; user-select: none; }
         .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color); border-radius: var(--r) 0 0 var(--r); }
-        
-        /* Ajuste Mobile: font-size 16px impede o zoom automático do iPhone */
-        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 12px; color: var(--t1); padding: 16px; margin-top: 12px; outline: none; font-size: 16px; -webkit-appearance: none; }
-        
+        .card.completed { opacity: 0.4; }
+
+        .progress-bg { height: 8px; background: var(--z3); border-radius: 99px; margin-top: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--ac); transition: width 0.8s ease; }
+
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 9999; backdrop-filter: blur(10px); overflow-y: auto; }
         .modal.active { display: flex; }
+
         .modal-box { background: var(--z2); border: 1px solid var(--z3); border-radius: var(--r); padding: 25px; width: 100%; max-width: 400px; margin: auto; }
 
+        input, select { width: 100%; background: var(--z1); border: 1px solid var(--z4); border-radius: 12px; color: var(--t1); padding: 16px; margin-top: 12px; outline: none; font-size: 16px; }
+        input:focus, select:focus { border-color: var(--ac); }
+        select option { background: var(--z1); }
+
+        label.field-label { display: block; font-size: 11px; font-weight: 700; color: var(--t3); margin-top: 16px; margin-bottom: -4px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+        #in-parcela-calc { display: none; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--ac); }
+
         .fab { position: fixed; bottom: 35px; left: 50%; transform: translateX(-50%); width: 68px; height: 68px; background: var(--ac); color: white; border-radius: 22px; border: none; font-size: 36px; z-index: 100; cursor: pointer; box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
-        .btn-primary { width: 100%; padding: 18px; margin-top: 20px; background: var(--ac); border: none; border-radius: 14px; color: white; font-weight: 800; font-size: 16px; cursor: pointer; }
-        .btn-ghost { width: 100%; background: none; border: none; color: var(--t3); margin-top: 10px; padding: 12px; cursor: pointer; }
-        
-        #in-parcela-calc { display: none; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 8px; font-size: 13px; color: var(--ac); font-weight: 700; }
-        label.field-label { display: block; font-size: 11px; font-weight: 700; color: var(--t3); margin-top: 16px; margin-bottom: -4px; text-transform: uppercase; }
-        .retro-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .fab:active { transform: translateX(-50%) scale(0.95); }
+
+        .btn-primary { width: 100%; padding: 16px; margin-top: 20px; background: var(--ac); border: none; border-radius: 12px; color: white; font-weight: 800; font-size: 15px; cursor: pointer; }
+        .btn-primary:active { opacity: 0.85; }
+        .btn-ghost { width: 100%; background: none; border: none; color: var(--t3); margin-top: 10px; padding: 12px; cursor: pointer; font-size: 14px; }
+
+        .swipe-hint { font-size: 11px; color: var(--t3); text-align: center; margin-bottom: 12px; }
+
+        @keyframes pulseAlert {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+        .card-alert { animation: pulseAlert 2.5s ease-in-out infinite; }
+
+        #alert-banner { display: none; margin-bottom: 16px; }
+
+        /* Modal de confirmação retroativa */
+        #modal-retro .modal-box {
+            max-width: 340px;
+            text-align: center;
+        }
+        #retro-msg {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--t1);
+            white-space: pre-line;
+            margin: 16px 0 24px;
+        }
+        .retro-btns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .retro-btns button {
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #retro-sim { background: var(--ok); color: white; }
+        #retro-nao { background: var(--z4); color: var(--t2); }
     </style>
 </head>
 <body>
@@ -50,36 +102,40 @@
             <h1 style="margin-bottom: 8px; font-size: 28px;">FinNotes <span style="color:var(--ac)">Pro</span></h1>
             <p style="color:var(--t3); font-size:13px; margin-bottom:24px;">Controle financeiro seguro</p>
             <input type="password" id="main-login-pwd" placeholder="SENHA" style="text-align: center; letter-spacing: 8px; font-size: 22px;">
-            <button onclick="checkLogin();" class="btn-primary">ACESSAR</button>
+            <button onclick="checkLogin(); requestNotifPermission();" class="btn-primary">ACESSAR</button>
         </div>
     </div>
 
     <div id="app">
+        <div id="install-row">
+            <span style="font-size: 13px; font-weight: 700;">Instalar App?</span>
+            <button onclick="installApp()" style="background: var(--ac); border: none; padding: 8px 16px; border-radius: 8px; color: white; font-weight: 800;">INSTALAR</button>
+        </div>
+
         <div class="dashboard">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="font-size: 12px; color: var(--t3); font-weight: 800;">TOTAL DE INFRA</span>
-                <button onclick="logout()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:var(--err); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:800;">SAIR</button>
+                <button onclick="logout()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:var(--err); border-radius:8px; padding:5px 12px; font-size:11px; font-weight:800; cursor:pointer;">SAIR</button>
             </div>
             <div id="total-geral" class="total-valor">R$ 0,00</div>
             <div class="progress-bg"><div id="total-progress" class="progress-fill" style="width:0%"></div></div>
         </div>
 
+        <div class="swipe-hint">Toque no card para registrar pagamento</div>
+        <div id="alert-banner"></div>
         <div id="notes-list"></div>
         <button class="fab" onclick="openModal('modal-add')">+</button>
     </div>
 
     <div class="modal" id="modal-add">
         <div class="modal-box">
-            <h3>Novo Registro</h3>
+            <h3 style="margin-bottom:4px;">Novo Registro</h3>
             <label class="field-label">Descrição *</label>
-            <input type="text" id="in-nome" placeholder="Ex: Notebook Dell">
-            
-            <label class="field-label">Valor Original</label>
-            <input type="number" id="in-valor1" placeholder="0.00" step="0.01" inputmode="decimal">
-            
-            <label class="field-label">Total com Taxas *</label>
-            <input type="number" id="in-valor2" placeholder="0.00" step="0.01" inputmode="decimal">
-
+            <input type="text" id="in-nome" placeholder="Ex: Notebook Dell...">
+            <label class="field-label">Valor original</label>
+            <input type="number" id="in-valor1" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
+            <label class="field-label">Total com taxas *</label>
+            <input type="number" id="in-valor2" placeholder="R$ 0,00" step="0.01" inputmode="decimal">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                 <div>
                     <label class="field-label">Parcelas</label>
@@ -90,17 +146,15 @@
                     <select id="in-cat">
                         <option value="Infraestrutura">🏠 Infraestrutura</option>
                         <option value="Hardware">💻 Hardware</option>
-                        <option value="Veículo">🚗 Veículo</option>
                         <option value="Outros">📦 Outros</option>
                     </select>
                 </div>
             </div>
             <div id="in-parcela-calc"></div>
-            <label class="field-label">Data de Pagamento</label>
+            <label class="field-label">Data de pagamento</label>
             <input type="date" id="in-data">
-
             <button onclick="saveNote()" class="btn-primary">GRAVAR</button>
-            <button onclick="closeModal('modal-add')" class="btn-ghost">Cancelar</button>
+            <button onclick="closeModal('modal-add')" class="btn-ghost">Voltar</button>
         </div>
     </div>
 
@@ -108,34 +162,30 @@
         <div class="modal-box">
             <h3>✏️ Editar Registro</h3>
             <div id="edit-info"></div>
+            <label class="field-label">Descrição</label>
             <input type="text" id="edit-nome">
+            <label class="field-label">Total</label>
             <input type="number" id="edit-total" step="0.01" inputmode="decimal">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                 <input type="number" id="edit-pagas" placeholder="Pagas">
                 <input type="number" id="edit-parcelas-total" placeholder="Total">
             </div>
             <button onclick="saveEdit()" class="btn-primary">SALVAR</button>
-            <button onclick="closeModal('modal-edit')" class="btn-ghost">Voltar</button>
+            <button onclick="closeModal('modal-edit')" class="btn-ghost">Cancelar</button>
         </div>
     </div>
 
-    <div class="modal" id="modal-retro" style="z-index: 10001;">
-        <div class="modal-box" style="text-align:center;">
-            <div style="font-size:32px;">📅</div>
-            <h3>Parcela Retroativa</h3>
-            <p id="retro-msg" style="margin:15px 0; font-size:14px; color:var(--t2);"></p>
+    <div class="modal" id="modal-retro">
+        <div class="modal-box">
+            <h3 style="font-size:16px;">Parcela Retroativa</h3>
+            <p id="retro-msg"></p>
             <div class="retro-btns">
-                <button id="retro-sim" style="background:var(--ok); color:white;">✅ Já paguei</button>
-                <button id="retro-nao" style="background:var(--z4); color:var(--t2);">❌ Não</button>
+                <button id="retro-sim">✅ Já paguei</button>
+                <button id="retro-nao">❌ Ainda não</button>
             </div>
         </div>
     </div>
 
     <script src="script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js');
-        }
-    </script>
 </body>
 </html>
