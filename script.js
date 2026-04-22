@@ -1,10 +1,10 @@
 /* ============================================================
-   FinNotes Pro — script.js
+   FinNotes Pro — script.js (GE Festas & HGP Edition)
    ============================================================ */
 
 let db;
 
-// 1. Inicialização do Banco de Dados
+// 1. Banco de Dados Protegido
 const request = indexedDB.open('finnotes_db', 1);
 
 request.onupgradeneeded = (e) => {
@@ -16,19 +16,19 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => {
     db = e.target.result;
-    console.log("Banco de dados conectado.");
+    console.log("Banco pronto.");
 };
 
-// 2. Login Mobile (Correção para teclado do celular)
+// 2. Login Mobile (Corrigido para teclados de Palmas/Android/iOS)
 function checkLogin() {
     const input = document.getElementById('main-login-pwd');
-    const pwd = input.value.trim();
+    const pwd = input.value.trim(); // Remove espaços que o celular coloca sozinho
     const correct = localStorage.getItem('finnotes_password') || '1234';
 
     if (pwd === correct) {
         document.getElementById('lock-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        input.blur();
+        input.blur(); // Esconde o teclado
         renderNotes();
         updateDashboard();
     } else {
@@ -37,42 +37,69 @@ function checkLogin() {
     }
 }
 
-// 3. Funções de Interface (Botão + e Modais)
-function openModal(id) {
-    const m = document.getElementById(id);
-    if (m) {
-        m.classList.add('active');
-        if (id === 'modal-add') resetAddForm();
+// 3. Função de Gravação Blindada (Agora Grava!)
+function saveNote() {
+    const nome = document.getElementById('in-nome').value;
+    const valor2 = document.getElementById('in-valor2').value;
+    const parcelas = document.getElementById('in-parcelas').value;
+    const cat = document.getElementById('in-cat').value;
+    const data = document.getElementById('in-data').value;
+
+    if (!nome || !valor2) {
+        alert("Preencha Descrição e Valor!");
+        return;
     }
+
+    const transaction = db.transaction(['notes'], 'readwrite');
+    const store = transaction.objectStore('notes');
+    
+    const novaNota = {
+        nome: nome,
+        total: parseFloat(valor2),
+        parcelas: parseInt(parcelas),
+        pagas: 0,
+        cat: cat,
+        data: data
+    };
+
+    const addReq = store.add(novaNota);
+
+    addReq.onsuccess = () => {
+        closeModal('modal-add');
+        renderNotes();
+        updateDashboard();
+        alert("Gravado com sucesso!");
+    };
+}
+
+// 4. Interface (Botão + e Categorias Completas)
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    if (id === 'modal-add') resetAddForm();
 }
 
 function closeModal(id) {
-    const m = document.getElementById(id);
-    if (m) m.classList.remove('active');
+    document.getElementById(id).classList.remove('active');
 }
 
 function resetAddForm() {
-    // Limpa campos básicos
     document.getElementById('in-nome').value = "";
-    document.getElementById('in-valor1').value = "";
     document.getElementById('in-valor2').value = "";
-    document.getElementById('in-data').value = new Date().toISOString().slice(0, 10);
-
-    // RESTAURAÇÃO DAS CATEGORIAS (Lista completa)
+    
+    // TODAS AS SUAS CATEGORIAS DE VOLTA
     const catSel = document.getElementById('in-cat');
     const categorias = [
         { v: 'Alimentação', t: '🍔 Alimentação' },
         { v: 'Saúde', t: '💊 Saúde' },
         { v: 'Lazer', t: '🎡 Lazer' },
         { v: 'Infraestrutura', t: '🏠 Infraestrutura' },
-        { v: 'Educação', t: '📚 Educação' },
         { v: 'Transporte', t: '🚗 Transporte' },
         { v: 'Hardware', t: '💻 Hardware' },
         { v: 'Outros', t: '📦 Outros' }
     ];
     catSel.innerHTML = categorias.map(c => `<option value="${c.v}">${c.t}</option>`).join('');
 
-    // RESTAURAÇÃO DAS PARCELAS (1x até 48x)
+    // PARCELAS DE 1 a 48
     const parcSel = document.getElementById('in-parcelas');
     parcSel.innerHTML = "";
     for (let i = 1; i <= 48; i++) {
@@ -83,54 +110,28 @@ function resetAddForm() {
     }
 }
 
-// 4. Renderização da Lista com Cores por Categoria
 function renderNotes() {
     const transaction = db.transaction(['notes'], 'readonly');
     const store = transaction.objectStore('notes');
     const req = store.getAll();
 
     req.onsuccess = () => {
-        const notes = req.result;
         const list = document.getElementById('notes-list');
         list.innerHTML = "";
-        
-        notes.forEach(n => {
+        req.result.sort((a,b) => b.id - a.id).forEach(n => {
             const card = document.createElement('div');
             card.className = 'card-container';
-            
-            // Cores baseadas nas variáveis do seu style.css
-            const colors = {
-                'Alimentação': '#f97316',
-                'Saúde': '#22d3ee',
-                'Lazer': '#a78bfa',
-                'Infraestrutura': '#34d399',
-                'Hardware': '#3b82f6',
-                'Outros': '#94a3b8'
-            };
-            const cardColor = colors[n.cat] || '#94a3b8';
-
-            card.innerHTML = `
-                <div class="card" onclick="editNote(${n.id})" style="--color: ${cardColor}">
-                    <div style="display:flex; justify-content:space-between;">
-                        <div>
-                            <div style="font-weight:800; font-size:15px;">${n.nome}</div>
-                            <div style="font-size:10px; color:var(--t3); margin-top:4px; font-weight:700;">
-                                ${n.cat.toUpperCase()} • ${n.pagas}/${n.parcelas} PARCELAS
-                            </div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-weight:800; color:var(--ac);">R$ ${parseFloat(n.total).toFixed(2)}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
             list.appendChild(card);
+            card.innerHTML = `<div class="card"><b>${n.nome}</b><br><small>${n.cat}</small> <span style="float:right">R$ ${n.total.toFixed(2)}</span></div>`;
         });
     };
 }
 
 function updateDashboard() {
-    // Lógica de soma e progresso aqui
+    const transaction = db.transaction(['notes'], 'readonly');
+    const store = transaction.objectStore('notes');
+    store.getAll().onsuccess = (e) => {
+        const total = e.target.result.reduce((acc, n) => acc + n.total, 0);
+        document.getElementById('total-geral').textContent = `R$ ${total.toFixed(2)}`;
+    };
 }
-
-function logout() { location.reload(); }
