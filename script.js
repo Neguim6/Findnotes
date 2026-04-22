@@ -50,6 +50,7 @@ function saveNote() {
     const nome = document.getElementById('in-nome').value.trim();
     const total = parseFloat(document.getElementById('in-valor2').value);
     const parcelas = parseInt(document.getElementById('in-parcelas').value);
+    const dataVenc = document.getElementById('in-data').value;
 
     if (!nome || isNaN(total)) {
         alert('Preencha os dados.');
@@ -62,7 +63,8 @@ function saveNote() {
         total,
         parcelas,
         pagas: 0,
-        cat: document.getElementById('in-cat').value
+        cat: document.getElementById('in-cat').value,
+        dataVenc: dataVenc || null
     });
 
     sync();
@@ -107,8 +109,7 @@ function saveEdit() {
     notes[idx].cat = document.getElementById('edit-cat').value;
 
     sync();
-
-    fecharTodosModais(); // 🔥
+    fecharTodosModais();
 }
 
 // ─── AUTH ─────────────────────────────────────────
@@ -135,15 +136,14 @@ function validateAuth() {
         }
 
         sync();
-
-        fecharTodosModais(); // 🔥 FECHA TUDO
+        fecharTodosModais();
 
     } else {
         alert("Senha incorreta");
     }
 }
 
-// ─── REMOVER PARCELAS (SELEÇÃO) ────────────────────
+// ─── REMOVER PARCELAS ─────────────────────────────
 function abrirSelecaoParcelas() {
     const note = notes.find(n => n.id === editingNoteId);
     if (!note) return;
@@ -183,23 +183,68 @@ function removerParcelasSelecionadas() {
         return;
     }
 
-    const qtd = checks.length;
-
-    if (qtd > note.pagas) {
-        alert("Erro.");
-        return;
-    }
-
-    note.pagas -= qtd;
+    note.pagas -= checks.length;
 
     document.getElementById('edit-pagas').value = note.pagas;
 
     atualizarInfoEdicao(note);
-
     sync();
 }
 
-// ─── RENDER ORIGINAL RESTAURADO ────────────────────
+// ─── ALERTAS (RESTAURADO) ─────────────────────────
+function getAlertStatus(n) {
+    if (!n.dataVenc || n.pagas === n.parcelas) return null;
+
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    const [ano, mes, dia] = n.dataVenc.split('-').map(Number);
+    const venc = new Date(ano, mes - 1, dia);
+
+    const diff = Math.round((venc - hoje) / 86400000);
+
+    if (diff < 0) return 'vencido';
+    if (diff === 0) return 'hoje';
+    if (diff <= 3) return 'proximo';
+
+    return null;
+}
+
+function checkAlerts() {
+    const banner = document.getElementById('alert-banner');
+    if (!banner) return;
+
+    banner.innerHTML = '';
+
+    const alertas = notes.filter(n => {
+        const s = getAlertStatus(n);
+        return s === 'vencido' || s === 'hoje' || s === 'proximo';
+    });
+
+    if (alertas.length === 0) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    banner.style.display = 'block';
+
+    alertas.forEach(n => {
+        const s = getAlertStatus(n);
+
+        const div = document.createElement('div');
+        div.style.marginBottom = '8px';
+
+        const label =
+            s === 'vencido' ? '🚨 VENCIDO' :
+            s === 'hoje' ? '⚠️ HOJE' :
+            '🔔 EM BREVE';
+
+        div.innerHTML = `<b>${label}</b> - ${n.nome}`;
+        banner.appendChild(div);
+    });
+}
+
+// ─── RENDER ───────────────────────────────────────
 function render() {
     const list = document.getElementById('notes-list');
     list.innerHTML = '';
@@ -221,6 +266,8 @@ function render() {
 
         list.appendChild(div);
     });
+
+    checkAlerts(); // 🔥 ESSENCIAL
 }
 
 // ─── INIT ─────────────────────────────────────────
