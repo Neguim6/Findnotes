@@ -1,11 +1,13 @@
+'use strict';
+
+// 0. PERSISTÊNCIA DE ARMAZENAMENTO
+// Solicita ao navegador que mantenha os dados mesmo se houver pouco espaço
 if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().then(granted => {
     if (granted) console.log("Armazenamento persistente garantido");
     else console.log("O sistema pode apagar os dados se faltar espaço");
   });
 }
-
-'use strict';
 
 // 1. PWA & AUTO-UPDATE
 if ('serviceWorker' in navigator) {
@@ -173,7 +175,6 @@ function calcPagas() {
 
     const [anoI, mesI] = inicioVal.split('-').map(Number);
     const hoje = new Date();
-    // Meses completos decorridos desde o mês de início até o mês anterior ao atual
     const mesesDecorridos = (hoje.getFullYear() - anoI) * 12 + (hoje.getMonth() + 1 - mesI);
     const pagas = Math.max(0, Math.min(mesesDecorridos, parcelas));
 
@@ -222,7 +223,6 @@ function saveNote() {
         return;
     }
 
-    // Calcula parcelas já pagas se o usuário informou data de início
     let pagas = 0;
     if (inicioVal) {
         const [anoI, mesI] = inicioVal.split('-').map(Number);
@@ -245,25 +245,21 @@ function saveNote() {
     closeModal('modal-add');
 }
 
-// ─── EDITAR PARCELAS ──────────────────────────────────────────────────────────
 let editingNoteId = null;
 
-// Retorna lista de parcelas com vencimento retroativo ainda não pagas
 function getParcelasRetroativas(note) {
     if (!note.dataVenc || note.pagas >= note.parcelas) return [];
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const [ano, mes, dia] = note.dataVenc.split('-').map(Number);
     const retroativas = [];
-    // A dataVenc é a data da próxima parcela (pagas+1).
-    // Calculamos cada parcela ainda não paga e verificamos se já venceu.
     for (let i = 0; i < (note.parcelas - note.pagas); i++) {
         const venc = new Date(ano, mes - 1 + i, dia);
         venc.setHours(0, 0, 0, 0);
         if (venc < hoje) {
             retroativas.push({ numero: note.pagas + i + 1, data: new Date(venc) });
         } else {
-            break; // parcelas são sequenciais: para quando encontra uma ainda não vencida
+            break;
         }
     }
     return retroativas;
@@ -274,7 +270,6 @@ async function openEditModal(noteId) {
     if (!note) return;
 
     editingNoteId = noteId;
-
     document.getElementById('edit-nome').value = note.nome;
     document.getElementById('edit-total').value = note.total;
     document.getElementById('edit-pagas').value = note.pagas;
@@ -284,8 +279,6 @@ async function openEditModal(noteId) {
 
     atualizarInfoEdicao(note);
     openModal('modal-edit');
-
-    // Processa parcelas retroativas em seguida (não bloqueia a abertura do modal)
     await processarParcelasRetroativas(noteId);
 }
 
@@ -300,16 +293,13 @@ function atualizarInfoEdicao(note) {
         </div>`;
 }
 
-// Processa retroativas: pergunta ao usuário parcela a parcela
 async function processarParcelasRetroativas(noteId) {
     let note = notes.find(n => n.id === noteId);
     if (!note) return;
-
     const retroativas = getParcelasRetroativas(note);
     if (retroativas.length === 0) return;
 
     for (const parcela of retroativas) {
-        // Recarrega o note a cada iteração para refletir pagas atualizadas
         note = notes.find(n => n.id === noteId);
         if (!note || note.pagas >= note.parcelas) break;
 
@@ -324,25 +314,20 @@ async function processarParcelasRetroativas(noteId) {
             const idx = notes.findIndex(n => n.id === noteId);
             if (idx !== -1 && notes[idx].pagas < notes[idx].parcelas) {
                 notes[idx].pagas += 1;
-                // Atualiza campos do modal
                 document.getElementById('edit-pagas').value = notes[idx].pagas;
                 atualizarInfoEdicao(notes[idx]);
             }
         } else {
-            break; // Para de perguntar se o usuário disse que não pagou
+            break;
         }
     }
-
-    // Persiste as confirmações feitas
     sync();
 }
 
-// Dialog customizado (promise-based) para confirmação de parcela retroativa
 function showRetroConfirm(mensagem) {
     return new Promise((resolve) => {
         document.getElementById('retro-msg').textContent = mensagem;
         document.getElementById('modal-retro').classList.add('active');
-
         const btnSim = document.getElementById('retro-sim');
         const btnNao = document.getElementById('retro-nao');
 
@@ -353,7 +338,6 @@ function showRetroConfirm(mensagem) {
         }
         function onSim() { cleanup(); resolve(true); }
         function onNao() { cleanup(); resolve(false); }
-
         btnSim.addEventListener('click', onSim);
         btnNao.addEventListener('click', onNao);
     });
@@ -394,7 +378,6 @@ function saveEdit() {
     closeModal('modal-edit');
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
 function askAuth(id, type) {
     pendingAction = { id, type };
     document.getElementById('pwd-title').textContent = type === 'pay' ? "Validar Baixa" : "Validar Exclusão";
@@ -418,7 +401,7 @@ function validateAuth() {
             notes = notes.filter(n => n.id !== pendingAction.id);
         }
         sync();
-        closeModal('modal-pwd'); // FIX: fecha a tela após validar com sucesso
+        closeModal('modal-pwd');
     } else {
         alert("SENHA INCORRETA");
         document.getElementById('confirm-pwd').value = '';
@@ -433,7 +416,6 @@ function sync() {
     render();
 }
 
-// ─── ALERTAS ──────────────────────────────────────────────────────────────────
 function getAlertStatus(n) {
     if (!n.dataVenc || n.pagas === n.parcelas) return null;
     const hoje = new Date();
@@ -465,15 +447,12 @@ function checkAlerts() {
         const s = getAlertStatus(n);
         return s === 'hoje' || s === 'proximo' || s === 'vencido';
     });
-
     const banner = document.getElementById('alert-banner');
     if (!banner) return;
-
     if (alertas.length === 0) { banner.style.display = 'none'; return; }
 
     banner.style.display = 'block';
     banner.innerHTML = '';
-
     alertas.forEach(n => {
         const s = getAlertStatus(n);
         const [ano, mes, dia] = n.dataVenc.split('-');
@@ -509,16 +488,9 @@ function checkAlerts() {
 }
 
 const CAT_COLORS = {
-    'Infraestrutura': '#34d399',
-    'Hardware':       '#f97316',
-    'Empréstimo':     '#f43f5e',
-    'Assinatura':     '#a78bfa',
-    'Saúde':          '#38bdf8',
-    'Veículo':        '#fbbf24',
-    'Educação':       '#4ade80',
-    'Alimentação':    '#fb923c',
-    'Lazer':          '#c084fc',
-    'Outros':         '#94a3b8'
+    'Infraestrutura': '#34d399', 'Hardware': '#f97316', 'Empréstimo': '#f43f5e',
+    'Assinatura': '#a78bfa', 'Saúde': '#38bdf8', 'Veículo': '#fbbf24',
+    'Educação': '#4ade80', 'Alimentação': '#fb923c', 'Lazer': '#c084fc', 'Outros': '#94a3b8'
 };
 
 function render() {
@@ -530,11 +502,7 @@ function render() {
         soma += n.total;
         const isDone = n.pagas === n.parcelas;
         const alertStatus = getAlertStatus(n);
-        const color = isDone
-            ? 'var(--ok)'
-            : alertStatus === 'vencido' ? '#ef4444'
-            : alertStatus === 'hoje' ? '#f97316'
-            : (CAT_COLORS[n.cat] || '#3b82f6');
+        const color = isDone ? 'var(--ok)' : alertStatus === 'vencido' ? '#ef4444' : alertStatus === 'hoje' ? '#f97316' : (CAT_COLORS[n.cat] || '#3b82f6');
         const valorParcela = (n.total / n.parcelas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         let dataDisplay = '';
@@ -554,14 +522,8 @@ function render() {
 
         const container = document.createElement('div');
         container.className = 'card-container';
-
-        const valorOriginalHTML = n.valorOriginal
-            ? `<span style="color:var(--t3); font-size:11px;">Orig: ${n.valorOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} → </span>`
-            : '';
-
-        const alertBorder = alertStatus && !isDone
-            ? `box-shadow: 0 0 0 2px ${alertStatus === 'vencido' ? '#ef4444' : alertStatus === 'hoje' ? '#f97316' : '#fbbf24'};`
-            : '';
+        const valorOriginalHTML = n.valorOriginal ? `<span style="color:var(--t3); font-size:11px;">Orig: ${n.valorOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} → </span>` : '';
+        const alertBorder = alertStatus && !isDone ? `box-shadow: 0 0 0 2px ${alertStatus === 'vencido' ? '#ef4444' : alertStatus === 'hoje' ? '#f97316' : '#fbbf24'};` : '';
 
         container.innerHTML = `
             <div class="card ${isDone ? 'completed' : ''} ${alertStatus && !isDone ? 'card-alert' : ''}" style="--color:${color}; ${alertBorder} padding-right: 100px;">
@@ -583,16 +545,12 @@ function render() {
             </div>`;
 
         const el = container.querySelector('.card');
-        const delBtn = container.querySelector('.btn-del');
-        const editBtn = container.querySelector('.btn-edit');
-
-        delBtn.addEventListener('click', (e) => { e.stopPropagation(); askAuth(n.id, 'delete'); });
-        editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(n.id); });
+        container.querySelector('.btn-del').addEventListener('click', (e) => { e.stopPropagation(); askAuth(n.id, 'delete'); });
+        container.querySelector('.btn-edit').addEventListener('click', (e) => { e.stopPropagation(); openEditModal(n.id); });
         el.addEventListener('click', (e) => {
             if (e.target.closest('.btn-action')) return;
             if (!isDone) askAuth(n.id, 'pay');
         });
-
         list.appendChild(container);
     });
 
